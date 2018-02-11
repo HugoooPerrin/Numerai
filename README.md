@@ -1,2 +1,2 @@
 # Numerai
-Model stacking for Numerai competition
+Model stacking for [numerai](https://numer.ai/) competition.
