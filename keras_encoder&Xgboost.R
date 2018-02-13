@@ -27,7 +27,7 @@ library(Metrics)
 library(parallel)
 library(parallelMap)
 
-# library(extraTrees)  Need rJava which isn't working
+library(extraTrees) # Need rJava which isn't working
 
 #-----------------------------------------------------------------------
 #------------------------------- 2. Data -------------------------------
@@ -157,63 +157,63 @@ save(encoded_train, encoded_test, encoded_final, encoding, file = "C:/Users/hper
 #-------------------------------------------------------------------------
 #--------------------------- 5. RandomForest -----------------------------
 
-# # load("C:/Users/hperrin/Desktop/Numerai/w81/encoded4.Rda")
-# n_cores = 4 # detectCores()
-# 
-# stacking_train = data.table(index = 1:nrow(encoded_train))
-# stacking_test = data.table(index = 1:nrow(encoded_test))
-# stacking_final = data.table(index = 1:nrow(encoded_final))
-# 
-# steps = 15
-# n_feature = 50
-# 
-# for (i in 1:steps)
-# {
-#   time1 = Sys.time()
-# 
-#   # SELECT RANDOMLY SOME VARIABLES
-#   choosen_var = sample(1:encoding,n_feature, replace = TRUE)
-#   Xtrain_temp = as.data.frame(encoded_train)[, c(choosen_var,encoding+1)]
-# 
-# 
-#   # RUN MODEL
-#   ranger_model = ranger(target ~ .,
-#                         data = Xtrain_temp,
-#                         num.trees = 75,
-#                         mtry = 10,
-#                         min.node.size = 50,
-#                         sample.fraction = 0.7,
-#                         num.threads = n_cores)
-# 
-#   # TRAIN PREDICTIONS
-#   eval(parse(text = paste0('stacking_train[, ranger_prob',i,' := predict(ranger_model, Xtrain_temp)$predictions]')))
-# 
-#   # TEST PREDICTIONS
-#   Xtest_temp = as.data.frame(encoded_test)[, c(choosen_var)]
-#   eval(parse(text = paste0('stacking_test[, ranger_prob',i,' := predict(ranger_model, Xtest_temp)$predictions]')))
-# 
-#   # FINAL PREDICTIONS
-#   Xfinal_temp = as.data.frame(encoded_final)[, c(choosen_var)]
-#   eval(parse(text = paste0('stacking_final[, ranger_prob',i,' := predict(ranger_model, Xfinal_temp)$predictions]')))
-# 
-# 
-#   cat('\n\n\nRandomForest step',i,'time : ', difftime(Sys.time(),time1,units = c("min")), "minutes !\n\n\n")
-# 
-# }
-# 
-# 
-# stacking_train[, index := NULL]
-# stacking_test[, index := NULL]
-# stacking_final[, index := NULL]
-# 
-# 
-# save(stacking_train, stacking_test, stacking_final, file = "C:/Users/hperrin/Desktop/Numerai/w81/rf_stacking2.Rda")
+# load("C:/Users/hperrin/Desktop/Numerai/w81/encoded4.Rda")
+n_cores = detectCores()
+
+stacking_train = data.table(index = 1:nrow(encoded_train))
+stacking_test = data.table(index = 1:nrow(encoded_test))
+stacking_final = data.table(index = 1:nrow(encoded_final))
+
+steps = 15
+n_feature = 50
+
+for (i in 1:steps)
+{
+  time1 = Sys.time()
+
+  # SELECT RANDOMLY SOME VARIABLES
+  choosen_var = sample(1:encoding,n_feature, replace = TRUE)
+  Xtrain_temp = as.data.frame(encoded_train)[, c(choosen_var,encoding+1)]
+
+
+  # RUN MODEL
+  ranger_model = ranger(target ~ .,
+                        data = Xtrain_temp,
+                        num.trees = 75,
+                        mtry = 10,
+                        min.node.size = 50,
+                        sample.fraction = 0.7,
+                        num.threads = n_cores)
+
+  # TRAIN PREDICTIONS
+  eval(parse(text = paste0('stacking_train[, ranger_prob',i,' := predict(ranger_model, Xtrain_temp)$predictions]')))
+
+  # TEST PREDICTIONS
+  Xtest_temp = as.data.frame(encoded_test)[, c(choosen_var)]
+  eval(parse(text = paste0('stacking_test[, ranger_prob',i,' := predict(ranger_model, Xtest_temp)$predictions]')))
+
+  # FINAL PREDICTIONS
+  Xfinal_temp = as.data.frame(encoded_final)[, c(choosen_var)]
+  eval(parse(text = paste0('stacking_final[, ranger_prob',i,' := predict(ranger_model, Xfinal_temp)$predictions]')))
+
+
+  cat('\n\n\nRandomForest step',i,'time : ', difftime(Sys.time(),time1,units = c("min")), "minutes !\n\n\n")
+
+}
+
+
+stacking_train[, index := NULL]
+stacking_test[, index := NULL]
+stacking_final[, index := NULL]
+
+
+save(stacking_train, stacking_test, stacking_final, file = "C:/Users/hperrin/Desktop/Numerai/w81/rf_stacking2.Rda")
 
 
 #-------------------------------------------------------------------------
 #--------------------------- 5. Xgboost ----------------------------------
 
-load("C:/Users/hperrin/Desktop/Numerai/w82/encoded1.Rda")
+load("../w82/encoded1.Rda")
 encoding = 25
 n_cores = detectCores()
 
@@ -309,7 +309,7 @@ stacking_train[, index := NULL]
 stacking_test[, index := NULL]
 stacking_final[, index := NULL]
 
-save(stacking_train, stacking_test, stacking_final, file = "C:/Users/hperrin/Desktop/Numerai/w82/stacking_xgb.Rda")
+save(stacking_train, stacking_test, stacking_final, file = "../w82/stacking_xgb.Rda")
 
 
 #-------------------------------------------------------------------------
@@ -361,14 +361,14 @@ stacking_train[, index := NULL]
 stacking_test[, index := NULL]
 stacking_final[, index := NULL]
 
-save(stacking_train, stacking_test, stacking_final, file = "C:/Users/hperrin/Desktop/Numerai/w81/stacking_lineaire1.Rda")
+save(stacking_train, stacking_test, stacking_final, file = "../w81/stacking_lineaire1.Rda")
 
 
 #-------------------------------------------------------------------------
 #--------------------------- 6. Feature weighted linear regression -------
 
 # Reload stacking data
-load("C:/Users/hperrin/Desktop/Numerai/w82/stacking_xgb.Rda")
+load("../w82/stacking_xgb.Rda")
 
 Ytrain = Xtrain[, target]
 Ytest = Xtest[, target]
@@ -382,15 +382,15 @@ Xfinal = stacking_final
 # Xtest = cbind(Xtest, stacking_test)
 # Xfinal = cbind(Xfinal, stacking_final)
 
-stacking_train = data.table(read_csv('C:/Users/hperrin/Desktop/Numerai/w82/first_stage_train.csv'))    
-stacking_test = data.table(read_csv('C:/Users/hperrin/Desktop/Numerai/w82/first_stage_test.csv'))       
-stacking_final = data.table(read_csv('C:/Users/hperrin/Desktop/Numerai/w82/first_stage_final.csv'))       
+stacking_train = data.table(read_csv('../w82/first_stage_train.csv'))    
+stacking_test = data.table(read_csv('../w82/first_stage_test.csv'))       
+stacking_final = data.table(read_csv('../w82/first_stage_final.csv'))       
 
 Xtrain = cbind(Xtrain, stacking_train[1:535713])
 Xtest = cbind(Xtest, stacking_test)
 Xfinal = cbind(Xfinal, stacking_final)
 
-load('C:/Users/hperrin/Desktop/Numerai/w81/metafeature.Rda')
+load('../w81/metafeature.Rda')
 
 ##--------------------------------------------------------
 ### SIMPLE MEAN
@@ -402,7 +402,7 @@ final_pred = apply(Xfinal, FUN = mean, MARGIN = 1)
 submission = data.table(id = final_id$id,
                        probability = final_pred)
 
-write.csv(submission, file = "C:/Users/hperrin/Desktop/Numerai/w81/3rd_submit.csv", row.names = FALSE)
+write.csv(submission, file = "../w81/3rd_submit.csv", row.names = FALSE)
 
 
 ##--------------------------------------------------------
@@ -421,7 +421,7 @@ final_pred = predict(linear_model, Xfinal)
 submission= data.table(id = final_id$id,
                        probability = final_pred)
 
-write.csv(submission, file = "C:/Users/hperrin/Desktop/Numerai/w82/2nd_submit.csv", row.names = FALSE)
+write.csv(submission, file = "../w82/2nd_submit.csv", row.names = FALSE)
 
 # With metafeature weights
 # Preprocessing
@@ -448,7 +448,7 @@ final_pred = predict(linear_model, Xfinal)
 submission= data.table(id = final_id$id,
                        probability = final_pred)
 
-write.csv(submission, file = "C:/Users/hperrin/Desktop/Numerai/w82/3rd_submit.csv", row.names = FALSE)
+write.csv(submission, file = "../w82/3rd_submit.csv", row.names = FALSE)
 
 # Tester glmnet pour du lasso auto selector
 
