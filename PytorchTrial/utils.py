@@ -13,27 +13,26 @@ import pandas as pd
 from sklearn.metrics import log_loss
 from scipy.special import expit
 
-from copy import deepcopy
-
-
 #--------------------------------------------------------------
 #--------------------------------------------------------------
 
-def train(num_epoch, model, train_loader, optimizer, criterion, valid_loader=None, use_GPU=True):
+def train(num_epoch, model, train_loader, optimizer, criterion, display_step=500, valid_loader=None, use_GPU=True):
 
     if use_GPU:
         model = model.cuda()
 
+    # Count the number of parameters in the network
     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
     params = sum([np.prod(p.size()) for p in model_parameters])
     print('\n>> Learning: {} parameters\n'.format(params))
+
     i = 0
     for epoch in range(num_epoch):
         total = 0
         running_loss = 0.0
         for data in train_loader:
-
             model.train()
+
             # Get the inputs (batch)
             inputs, labels = data
             # Wrap them in Variable
@@ -43,23 +42,28 @@ def train(num_epoch, model, train_loader, optimizer, criterion, valid_loader=Non
             else:
                 inputs = Variable(inputs)
                 labels = Variable(labels)
+
             # Zero the parameter gradients
             optimizer.zero_grad()
+
             # Forward
             outputs = model(inputs)
+
             # Loss
             loss = criterion(outputs, labels)
 
-            del inputs, labels
+            del inputs, labels  # Useful ?
 
             # Backward 
             loss.backward()
+
             # Optimize
             optimizer.step()
+
             # print statistics
             running_loss += loss.data[0]
             i += 1
-            if i % 100 == 99:    # Print every 100 mini-batches
+            if i % display_step == display_step-1:    
 
                 if valid_loader is not None:
                     model.eval()
@@ -67,6 +71,7 @@ def train(num_epoch, model, train_loader, optimizer, criterion, valid_loader=Non
                     inputs = valid_loader.dataset.data_tensor
                     labels = valid_loader.dataset.target_tensor
                     labels = labels
+
                     # Wrap them in Variable
                     if use_GPU is True:
                         inputs = Variable(inputs.cuda(), requires_grad=False)
@@ -74,17 +79,16 @@ def train(num_epoch, model, train_loader, optimizer, criterion, valid_loader=Non
                         inputs = Variable(inputs, requires_grad=False)
 
                     outputs = model(inputs)
-
-                    prediction = outputs.data.float() # probabilities             
+                    prediction = outputs.data.float()             
                     prediction = expit(prediction.cpu().numpy())
                     target = labels.cpu().numpy()    
 
-                    print('Epoch: %d, step: %5d, training loss: %.4f, validation AUC-ROC: %.5f' % 
-                          (epoch + 1, i + 1, running_loss / 100, log_loss(target, prediction)))
+                    print('Epoch: %d, step: %5d, training loss: %.4f, validation loss: %.4f' % 
+                          (epoch + 1, i + 1, running_loss / display_step, log_loss(target, prediction)))
                     running_loss = 0.0
                 else:
                     print('Epoch: %d, step: %5d, training loss: %.4f' % 
-                          (epoch + 1, i + 1, running_loss / 100))
+                          (epoch + 1, i + 1, running_loss / display_step))
                     running_loss = 0.0
 
 
@@ -92,15 +96,15 @@ def predict(model, dataset_loader, use_GPU=True):
 
     model.eval()
 
-    concatenate = False
+    concatenate = False                # Prediction by batch to optimize GPU memory use
 
     # Get the inputs
     for data in dataset_loader:
 
         if len(data) == 2:
-            inputs, other = data
+            inputs, other = data       # Small if statement allowing to have loader 
         else:
-            inputs = data
+            inputs = data              # with or without target (validation or test)
 
         # Wrap them in Variable
         if use_GPU is True:

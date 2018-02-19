@@ -29,10 +29,21 @@ from utils import *
 time1 = time.time()
 
 # Import data
-train_vect = pd.read_csv('../../../Datasets/Numerai/w95/numerai_tournament_data.csv')
+train_vect = pd.read_csv('../../../Datasets/Numerai/w95/numerai_training_data.csv')
+test_comments = pd.read_csv('../../../Datasets/Numerai/w95/numerai_tournament_data.csv')
 
 # Preprocess data for torch
-train_comments = train_vect.reshape(train_vect.shape[0],1,train_vect.shape[1])
+test_comments = test_comments[test_comments['data_type'] == 'validation']
+
+labels = train_vect['target']
+test_labels = test_comments['target']
+
+train_vect.drop(['id', 'era', 'data_type', 'target'], inplace = True, axis = 1)
+test_comments.drop(['id', 'era', 'data_type', 'target'], inplace = True, axis = 1)
+
+# Step for 1D convolution
+train_vect = train_vect.reshape(train_vect.shape[0],1,train_vect.shape[1])
+test_comments = test_comments.reshape(test_comments.shape[0],1,test_comments.shape[1])
 
 time1 = time.time()
 
@@ -46,15 +57,14 @@ for i in range(CV):
     print('\n---------------------------------------------------\nLoop number {}'.format(i+1))
 
     random_order = permutation(len(train_vect))
+    split = floor(len(train_vect)*80/100)
 
     ## Train test split
-    train_comments = train_vect[random_order[:120000]]
-    valid_comments = train_vect[random_order[120001:135000]]
-    test_comments = train_vect[random_order[135001:]]
+    train_comments = train_vect[random_order[:split]]
+    valid_comments = train_vect[random_order[split:]]
 
-    train_labels = train_vect[random_order[:120000]]
-    valid_labels = train_vect[random_order[120001:135000]]
-    test_labels = train_vect[random_order[135001:]]
+    train_labels = labels[random_order[:split]]
+    valid_labels = labels[random_order[split:]]
 
     ## Parameters
     use_GPU = True
