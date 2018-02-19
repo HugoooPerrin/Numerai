@@ -5,6 +5,8 @@
 
 import pandas as pd
 import numpy as np
+from numpy.random import permutation
+from math import floor
 import sys
 import nltk
 import pickle
@@ -20,6 +22,7 @@ import torchvision
 import torchvision.transforms as transforms
 
 from sklearn.metrics import log_loss
+from sklearn.model_selection import train_test_split
 from multiprocessing import Pool
 
 # Personal modules
@@ -35,15 +38,18 @@ test_comments = pd.read_csv('../../../Datasets/Numerai/w95/numerai_tournament_da
 # Preprocess data for torch
 test_comments = test_comments[test_comments['data_type'] == 'validation']
 
-labels = train_vect['target']
-test_labels = test_comments['target']
+labels = train_vect['target'].values
+test_labels = test_comments['target'].values
 
 train_vect.drop(['id', 'era', 'data_type', 'target'], inplace = True, axis = 1)
 test_comments.drop(['id', 'era', 'data_type', 'target'], inplace = True, axis = 1)
 
+train_vect = train_vect.as_matrix()
+test_comments = test_comments.as_matrix()
+
 # Step for 1D convolution
-train_vect = train_vect.reshape(train_vect.shape[0],1,train_vect.shape[1])
-test_comments = test_comments.reshape(test_comments.shape[0],1,test_comments.shape[1])
+# train_vect = train_vect.reshape(train_vect.shape[0],1,train_vect.shape[1])
+# test_comments = test_comments.reshape(test_comments.shape[0],1,test_comments.shape[1])
 
 time1 = time.time()
 
@@ -56,15 +62,8 @@ for i in range(CV):
 
     print('\n---------------------------------------------------\nLoop number {}'.format(i+1))
 
-    random_order = permutation(len(train_vect))
-    split = floor(len(train_vect)*80/100)
-
     ## Train test split
-    train_comments = train_vect[random_order[:split]]
-    valid_comments = train_vect[random_order[split:]]
-
-    train_labels = labels[random_order[:split]]
-    valid_labels = labels[random_order[split:]]
+    train_comments, valid_comments, train_labels, valid_labels = train_test_split(train_vect, labels, test_size=0.3)
 
     ## Parameters
     use_GPU = True

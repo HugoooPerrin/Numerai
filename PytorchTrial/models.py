@@ -29,6 +29,7 @@ class NN(nn.Module):
         
     def forward(self, x):
         out = self.linear(x)
+        out = out.view(-1)
         return out
 
 
@@ -56,6 +57,7 @@ class CNN(nn.Module):
         out = self.cnn(x)
         out = out.view(-1, 23*10)
         out = self.fc(out)
+        out = out.view(-1)
         return out
 
 
@@ -112,5 +114,6 @@ class Inception(nn.Module):
         del inter1, inter2, inter3
 
         out = self.final_module(out)
+        out = out.view(-1)
 
         return out
