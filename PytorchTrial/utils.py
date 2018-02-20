@@ -1,34 +1,30 @@
 
 
-import torch
-import torch.optim as optim
 from torch.autograd import Variable
-import torch.nn as nn
-import torchvision
-import torchvision.transforms as transforms
 
 import numpy as np
-import pandas as pd
 
 from sklearn.metrics import log_loss
 from scipy.special import expit
 
-#--------------------------------------------------------------
-#--------------------------------------------------------------
+
+# --------------------------------------------------------------
+# --------------------------------------------------------------
+
 
 def train(num_epoch, model, train_loader, optimizer, criterion, display_step=500, valid_loader=None, use_GPU=True):
 
     if use_GPU:
         model = model.cuda()
 
-    # Count the number of parameters in the network
+    # Count the number of parameters in the network
     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
     params = sum([np.prod(p.size()) for p in model_parameters])
     print('\n>> Learning: {} parameters\n'.format(params))
 
     i = 0
     for epoch in range(num_epoch):
-        total = 0
+
         running_loss = 0.0
         for data in train_loader:
             model.train()
@@ -96,7 +92,7 @@ def predict(model, dataset_loader, use_GPU=True):
 
     model.eval()
 
-    concatenate = False                # Prediction by batch to optimize GPU memory use
+    concatenate = False                # Prediction by batch to optimize GPU memory use
 
     # Get the inputs
     for data in dataset_loader:
@@ -104,7 +100,7 @@ def predict(model, dataset_loader, use_GPU=True):
         if len(data) == 2:
             inputs, other = data       # Small if statement allowing to have loader 
         else:
-            inputs = data              # with or without target (validation or test)
+            inputs = data              # with or without target (validation or test)
 
         # Wrap them in Variable
         if use_GPU is True:
@@ -122,11 +118,10 @@ def predict(model, dataset_loader, use_GPU=True):
             prediction = outputs.data.numpy() # probabilities      
 
         if concatenate:
-            full_prediction = np.concatenate((full_prediction,prediction), axis=0)
+            full_prediction = np.concatenate((full_prediction, prediction), axis=0)
         else:
             full_prediction = prediction
             concatenate = True
-
 
     # Compute sigmoid function
     full_prediction = expit(full_prediction)
