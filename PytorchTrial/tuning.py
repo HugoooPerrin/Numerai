@@ -14,35 +14,39 @@ from sklearn.metrics import log_loss
 from sklearn.model_selection import train_test_split
 
 # Personal modules
-from PytorchTrial.models import *
-from PytorchTrial.utils import *
+from models import *
+from utils import *
+
+use_GPU = torch.cuda.is_available()
 
 time1 = time.time()
 
 # Import data
-train_vect = pd.read_csv('../../Datasets/Numerai/w95/numerai_training_data.csv')
-test_comments = pd.read_csv('../../Datasets/Numerai/w95/numerai_tournament_data.csv')
+train_vect = pd.read_csv('../../../Datasets/Numerai/w95/numerai_training_data.csv')
+test_comments = pd.read_csv('../../../Datasets/Numerai/w95/numerai_tournament_data.csv')
 
 # Preprocess data for torch
 test_comments = test_comments[test_comments['data_type'] == 'validation']
 
-labels = train_vect['target'].values
-test_labels = test_comments['target'].values
+labels = np.array(train_vect['target'].values)
+labels = labels.reshape(labels.shape[0], 1)
+test_labels = np.array(test_comments['target'].values)
+test_labels = test_labels.reshape(test_labels.shape[0], 1)
 
 train_vect.drop(['id', 'era', 'data_type', 'target'], inplace=True, axis=1)
 test_comments.drop(['id', 'era', 'data_type', 'target'], inplace=True, axis=1)
 
-train_vect = train_vect.as_matrix()
-test_comments = test_comments.as_matrix()
+train_vect = np.array(train_vect)
+test_comments = np.array(test_comments)
 
 # Step for 1D convolution
-# train_vect = train_vect.reshape(train_vect.shape[0],1,train_vect.shape[1])
-# test_comments = test_comments.reshape(test_comments.shape[0],1,test_comments.shape[1])
+train_vect = train_vect.reshape(train_vect.shape[0],1,train_vect.shape[1])
+test_comments = test_comments.reshape(test_comments.shape[0],1,test_comments.shape[1])
 
 time1 = time.time()
 
 # Cross validation loop
-CV = 4
+CV = 1
 
 CV_score = 0
 
@@ -54,9 +58,8 @@ for i in range(CV):
     train_comments, valid_comments, train_labels, valid_labels = train_test_split(train_vect, labels, test_size=0.3)
 
     # Parameters
-    use_GPU = True
-    batch_size = 64
-    num_epoch = 9
+    batch_size = 32
+    num_epoch = 6
 
     # Data to tensor
     train_dataset = torch.utils.data.TensorDataset(torch.FloatTensor(train_comments), 
@@ -82,16 +85,16 @@ for i in range(CV):
                                               shuffle=False,
                                               num_workers = 8)
     # Model
-    net = NN()
+    net = Inception()
 
     # Loss function
     criterion = nn.BCEWithLogitsLoss()
     
     # Optimization algorithm
-    optimizer = optim.RMSprop(net.parameters(), lr=0.0003, alpha=0.99, eps=1e-08, weight_decay=0, momentum=0.9)
+    optimizer = optim.RMSprop(net.parameters(), lr=0.000012, alpha=0.99, eps=1e-08, weight_decay=0, momentum=0.9)
 
     # Training model
-    train(num_epoch, net, train_loader, optimizer, criterion, display_step=1000, valid_loader=valid_loader,
+    train(num_epoch, net, train_loader, optimizer, criterion, display_step=2000, valid_loader=valid_loader,
           use_GPU=use_GPU)
 
     # Predicting
@@ -102,10 +105,10 @@ for i in range(CV):
 
     CV_score += score*(1/CV)
 
-    print("\nModel intermediate score: %.4f" % score)
+    print("\nModel intermediate score: %.6f" % score)
 
 
-print("\nModel final score: %.4f\n" % CV_score)
+print("\nModel final score: %.6f\n" % CV_score)
 
 
 time2 = time.time()

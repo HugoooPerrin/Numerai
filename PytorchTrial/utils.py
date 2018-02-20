@@ -25,7 +25,9 @@ def train(num_epoch, model, train_loader, optimizer, criterion, display_step=500
     i = 0
     for epoch in range(num_epoch):
 
+        step_number = 0
         running_loss = 0.0
+        
         for data in train_loader:
             model.train()
 
@@ -59,6 +61,8 @@ def train(num_epoch, model, train_loader, optimizer, criterion, display_step=500
             # print statistics
             running_loss += loss.data[0]
             i += 1
+            step_number += 1
+
             if i % display_step == display_step-1:    
 
                 if valid_loader is not None:
@@ -79,13 +83,15 @@ def train(num_epoch, model, train_loader, optimizer, criterion, display_step=500
                     prediction = expit(prediction.cpu().numpy())
                     target = labels.cpu().numpy()    
 
-                    print('Epoch: %d, step: %5d, training loss: %.4f, validation loss: %.4f' % 
-                          (epoch + 1, i + 1, running_loss / display_step, log_loss(target, prediction)))
+                    print('Epoch: %d, step: %5d, training loss: %.5f, validation loss: %.5f' % 
+                          (epoch + 1, i + 1, running_loss / step_number, log_loss(target, prediction)))
                     running_loss = 0.0
+                    step_number = 0
                 else:
-                    print('Epoch: %d, step: %5d, training loss: %.4f' % 
-                          (epoch + 1, i + 1, running_loss / display_step))
+                    print('Epoch: %d, step: %5d, training loss: %.5f' % 
+                          (epoch + 1, i + 1, running_loss / step_number))
                     running_loss = 0.0
+                    step_number = 0
 
 
 def predict(model, dataset_loader, use_GPU=True):
