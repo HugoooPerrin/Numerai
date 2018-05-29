@@ -9,6 +9,7 @@ import time
 
 import torch.utils.data as utils
 import torch.optim as optim
+import torch.cuda
 
 from sklearn.metrics import log_loss
 from sklearn.model_selection import train_test_split
@@ -79,10 +80,10 @@ train(num_epoch, net, train_loader, optimizer, criterion, display_step=2000, val
 predictions = predict(net, test_loader, use_GPU=use_GPU)
 
 # Getting the right format
-predictions = pd.DataFrame(predictions, columns = ['probability'])
-predictions['id'] = final_id
+submission = pd.DataFrame(final_id, columns = ['id'])
+submission['probability'] = predictions
 
-predictions.to_csv('../../../Datasets/Numerai/w95/1st_submission.csv')
+predictions.to_csv('../../../Datasets/Numerai/w95/1st_submission.csv', index=False)
 
 time2 = time.time()
 diff_time = (time2 - time1)/60
