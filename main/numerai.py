@@ -3,6 +3,7 @@
 
 
 
+
 """
 Main class designed to quickly evaluate different model architectures over Numerai dataset
 
@@ -35,8 +36,8 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
 
 # Perso
-sys.path.append('../')
-from pytorch import models, utils
+# sys.path.append('../')
+# from pytorch import models, utils
 
 # Utils
 def diff(t_a, t_b):
@@ -68,8 +69,8 @@ class Numerai(object):
     def load_data(self, week):
         print('\n---------------------------------------------')
         print('>> Loading data', end='...')
-        Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(week))
-        Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(week))
+        # Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(week))
+        # Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(week))
 
         real_data = Xvalid.copy(True)
         self.ids = Xvalid['id']
@@ -188,12 +189,7 @@ class Numerai(object):
 
 
 
-    def add_compiler(self, name, model, parameters):
-        pass
-
-
-
-    def fit_tune(self, evaluate=False, nCores=-1):
+    def fit_tune(self, nCores=-1):
 
         score = make_scorer(score_func = log_loss)
         time = datetime.now()
@@ -310,8 +306,8 @@ class Numerai(object):
         print('>> Processing compilation')
 
         self.finalPrediction = {}
-            for dataset in self.Xtrain:
-                self.finalPrediction[dataset] = pd.DataFrame()
+        for dataset in self.Xtrain:
+            self.finalPrediction[dataset] = pd.DataFrame()
 
         if self.stageNumber == 1:
             compilation_data = self.firstStagePrediction
@@ -330,15 +326,19 @@ class Numerai(object):
             pass
 
         # Tuning
-        gscv = GridSearchCV(compile_model, compile_parameters, scoring = score, n_jobs = nCores)
-        gscv.fit(compilation_data[datasetToUse], self.Ytrain[datasetToUse])                                       ## COMPILATION TRAINING ON SECOND STAGE PREDICTION OF XTRAIN3
-                                                                                                                  ## IF THERE IS TWO STAGES, ELSE ON XTRAIN2
-        # Final prediction
-        for dataset in self.Xtrain:
-            finalPrediction[dataset]['{}_prediction_{}'.format(name, step+1)] = gscv.predict_proba(inter[dataset])[:,1]
+        for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.nFeatures, self.stage):
+            
+            if stage == datasetToUse:                                                                                     ## There is normally only one model that fits here !!!!
+
+                gscv = GridSearchCV(self.compile_model, self.compile_parameters, scoring = score, n_jobs = nCores)
+                gscv.fit(compilation_data[datasetToUse], self.Ytrain[datasetToUse])                                       ## COMPILATION TRAINING ON SECOND STAGE PREDICTION OF XTRAIN3
+                                                                                                                          ## IF THERE IS TWO STAGES, ELSE ON XTRAIN2
+                # Final prediction
+                for dataset in self.Xtrain:
+                    self.finalPrediction[dataset]['final_prediction'.format(name, step+1)] = gscv.predict_proba(inter[dataset])[:,1]
 
         print('Total running time {}'.format(diff(datetime.now(), time)))
-        print('Final log loss : {}\n'.format(log_loss(Ytrain['valid'], inter['valid']['{}_prediction_{}'.format(name,step+1)])))                            
+        print('Final log loss : {}\n'.format(log_loss(Ytrain['valid'], inter['valid']['final_prediction'.format(name,step+1)])))                        
 
 
 
