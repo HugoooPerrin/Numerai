@@ -69,11 +69,11 @@ class Numerai(object):
     def load_data(self, week):
         print('\n---------------------------------------------')
         print('>> Loading data', end='...')
-        # Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(week))
-        # Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(week))
+        Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(week))
+        Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(week))
 
-        Xtrain = pd.read_csv("../../Data/numerai_training_data.csv")
-        Xvalid = pd.read_csv("../../Data/numerai_tournament_data.csv")
+        # Xtrain = pd.read_csv("../../Data/numerai_training_data.csv")
+        # Xvalid = pd.read_csv("../../Data/numerai_tournament_data.csv")
 
         real_data = Xvalid.copy(True)
         self.ids = Xvalid['id']
@@ -324,7 +324,7 @@ class Numerai(object):
         # Adding metafeatures
         try:
             for feature, stage in zip(self.metafeatureName, self.metafeatureStage):
-                if stage == 3:
+                if stage == datasetToUse:
                     for dataset in self.Xtrain:
                         inter[dataset][feature] = self.metafeature[dataset][feature]
         except:
@@ -340,10 +340,10 @@ class Numerai(object):
                                                                                                                           ## IF THERE IS TWO STAGES, ELSE ON XTRAIN2
                 # Final prediction
                 for dataset in self.Xtrain:
-                    self.finalPrediction[dataset]['final_prediction'.format(name, step+1)] = gscv.predict_proba(inter[dataset])[:,1]
+                    self.finalPrediction[dataset]['final_prediction'] = gscv.predict_proba(compilation_data[dataset])[:,1]
 
-        print('Total running time {}'.format(diff(datetime.now(), time)))
-        print('Final log loss : {}\n'.format(log_loss(self.Ytrain['valid'], self.finalPrediction['valid']['final_prediction'.format(name,step+1)])))                        
+        print('\nTotal running time {}'.format(diff(datetime.now(), time)))
+        print('Final log loss : {}\n'.format(log_loss(self.Ytrain['valid'], self.finalPrediction['valid']['final_prediction'])))                        
 
 
 
@@ -353,7 +353,7 @@ class Numerai(object):
         submit['probability'] = self.finalPrediction['real_data']
 
     # Saving prediction
-        submit.to_csv('../../../Datasets/Numerai/{0}/submission{1}.csv'.format(week, submissionNumber), index = False)
+        submit.to_csv('../../../Datasets/Numerai/w{0}/submission{1}.csv'.format(week, submissionNumber), index = False)
 
     # Automated submission through the numerai API
         pass
