@@ -178,6 +178,10 @@ class Numerai(object):
 
 
     def add_model(self, name, model, parameters, baggingSteps, nFeatures, stage): 
+
+        """
+        A model should be sklearn-friendly and have a "predict_proba" method
+        """
         self.modelNames.append(name)
         self.models.append(model)
         self.parameters.append(parameters)
@@ -250,10 +254,10 @@ class Numerai(object):
 
     # Second stage
 
-        print('\n\n---------------------------------------------')
-        print('>> Processing second stage\n')
-
         if self.stageNumber == 2:
+
+            print('\n\n---------------------------------------------')
+            print('>> Processing second stage\n')
 
             features = [name for name in self.firstStagePrediction[1].columns]
             time1 = datetime.now()
@@ -331,7 +335,7 @@ class Numerai(object):
             
             if stage == datasetToUse:                                                                                     ## There is normally only one model that fits here !!!!
 
-                gscv = GridSearchCV(self.compile_model, self.compile_parameters, scoring = score, n_jobs = nCores)
+                gscv = GridSearchCV(model, parameters, scoring = score, n_jobs = nCores)
                 gscv.fit(compilation_data[datasetToUse], self.Ytrain[datasetToUse])                                       ## COMPILATION TRAINING ON SECOND STAGE PREDICTION OF XTRAIN3
                                                                                                                           ## IF THERE IS TWO STAGES, ELSE ON XTRAIN2
                 # Final prediction

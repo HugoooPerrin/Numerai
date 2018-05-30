@@ -55,20 +55,20 @@ nCores = 3
 
 modelNames = ['ExtraTrees1',
               'ExtraTrees2',
-              'XGBoost', 
+              # 'XGBoost', 
               'SGDC',
               'Lightgbm']
 
 models = [ExtraTreesClassifier(n_jobs = nCores, 
                                criterion = 'entropy',
-                               max_depth = 4,
-                               n_estimators = 100,
+                               max_depth = 3,
+                               n_estimators = 50,
                                bootstrap = True),
           
           ExtraTreesClassifier(n_jobs = nCores, 
                                criterion = 'gini',
-                               max_depth = 4,
-                               n_estimators = 100,
+                               max_depth = 3,
+                               n_estimators = 50,
                                bootstrap = True),
           
 #           XGBClassifier(learning_rate = 0.5, 
@@ -79,11 +79,18 @@ models = [ExtraTreesClassifier(n_jobs = nCores,
           SGDClassifier(loss = 'log', 
                         penalty = 'elasticnet', 
                         learning_rate = 'optimal',
+                        max_iter = 5,
+                        tol = None,
                         n_jobs = nCores),
          
           LGBMClassifier(objective = 'binary',
-                         max_depth = 4,
+                         max_depth = 3,
+                         n_estimators = 100,
                          n_jobs = nCores)]
+
+
+## Rajouter des regressions logistic !
+
 
 parameters = [{'min_samples_split' : [200, 1000],                               # ExtraTreesClassifier entropy
                'min_samples_leaf' : [200, 1000]},
@@ -96,7 +103,7 @@ parameters = [{'min_samples_split' : [200, 1000],                               
               {'alpha' : [0.001, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 1],            # SGDClassifier
                'l1_ratio' : [0.001, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 1]},
 
-              {'n_estimators': [50, 100, 200],                                  # Lightgbm
+              {# 'n_estimators': [50, 100, 200],                                  # Lightgbm
                'num_leaves ' : [15, 40, 100, 500],
                'min_samples_leaf' : [200, 1000],
                'reg_lambda' : [0.001, 0.01, 0.05, 0.1, 0.5, 1]}]
