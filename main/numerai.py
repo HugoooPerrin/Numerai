@@ -72,6 +72,9 @@ class Numerai(object):
         # Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(week))
         # Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(week))
 
+        Xtrain = pd.read_csv("../../Data/numerai_training_data.csv")
+        Xvalid = pd.read_csv("../../Data/numerai_tournament_data.csv")
+
         real_data = Xvalid.copy(True)
         self.ids = Xvalid['id']
 
@@ -153,7 +156,7 @@ class Numerai(object):
                 self.metafeature[dataset]['mean'] = self.Xtrain[dataset].mean(axis = 1)
 
         if 'distance' in name:
-            mean_indiv = pd.concat(self.train.values(), axis=0).mean(axis = 0)
+            mean_indiv = pd.concat(self.Xtrain.values(), axis=0).mean(axis = 0)
             for dataset in self.Xtrain:
                 self.metafeature[dataset]['distance'] = self.Xtrain[dataset].apply(lambda row: euclidean(row, mean_indiv), axis = 1)
 
@@ -196,8 +199,8 @@ class Numerai(object):
         
     # First stage
 
-        print('\n---------------------------------------------\n---------------------------------------------')
-        print('>> Processing first stage')
+        print('\n---------------------------------------------')
+        print('>> Processing first stage\n')
 
         features = [name for name in self.Xtrain[1].columns]
         time1 = datetime.now()
@@ -206,10 +209,9 @@ class Numerai(object):
         for dataset in self.Xtrain:
             self.firstStagePrediction[dataset] = pd.DataFrame()
 
-        for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.nFeatures, self.stage):
+        for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.baggingSteps, self.nFeatures, self.stage):
             
             if stage == 1:
-                print('\n---------------------------------------------')
                 print('>> Processing {}\n'.format(name))
 
                 for step in range(baggingSteps):
@@ -242,14 +244,14 @@ class Numerai(object):
                         self.firstStagePrediction[dataset]['{}_prediction_{}'.format(name, step+1)] = gscv.predict_proba(inter[dataset])[:,1]
 
                     print('done in {}'.format(diff(datetime.now(), time2)))
-                    print('log loss : {}\n'.format(log_loss(Ytrain['valid'], inter['valid']['{}_prediction_{}'.format(name,step+1)])))
+                    print('log loss : {}\n'.format(log_loss(self.Ytrain['valid'], self.firstStagePrediction['valid']['{}_prediction_{}'.format(name,step+1)])))
 
         print('\nFirst stage running time {}'.format(diff(datetime.now(), time1)))
 
     # Second stage
 
-        print('\n\n---------------------------------------------\n---------------------------------------------')
-        print('>> Processing second stage')
+        print('\n\n---------------------------------------------')
+        print('>> Processing second stage\n')
 
         if self.stageNumber == 2:
 
@@ -260,10 +262,9 @@ class Numerai(object):
             for dataset in self.Xtrain:
                 self.secondStagePrediction[dataset] = pd.DataFrame()
 
-            for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.nFeatures, self.stage):
+            for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.baggingSteps, self.nFeatures, self.stage):
             
                 if stage == 2:
-                    print('\n---------------------------------------------')
                     print('>> Processing {}\n'.format(name))
 
                     for step in range(baggingSteps):
@@ -293,17 +294,17 @@ class Numerai(object):
                                                                                                                   
                     # Saving best predictions
                         for dataset in self.Xtrain:
-                            firstStagePrediction[dataset]['{}_prediction_{}'.format(name, step+1)] = gscv.predict_proba(inter[dataset])[:,1]
+                            self.secondStagePrediction[dataset]['{}_prediction_{}'.format(name, step+1)] = gscv.predict_proba(inter[dataset])[:,1]
 
                         print('done in {}'.format(diff(datetime.now(), time2)))
-                        print('log loss : {}\n'.format(log_loss(Ytrain['valid'], inter['valid']['{}_prediction_{}'.format(name,step+1)])))
+                        print('log loss : {}\n'.format(log_loss(self.Ytrain['valid'], self.secondStagePrediction['valid']['{}_prediction_{}'.format(name,step+1)])))
 
             print('Second stage running time {}'.format(diff(datetime.now(), time1)))
 
     # Compilation
 
-        print('\n\n---------------------------------------------\n---------------------------------------------')
-        print('>> Processing compilation')
+        print('\n\n---------------------------------------------')
+        print('>> Processing compilation\n')
 
         self.finalPrediction = {}
         for dataset in self.Xtrain:
@@ -326,7 +327,7 @@ class Numerai(object):
             pass
 
         # Tuning
-        for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.nFeatures, self.stage):
+        for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.baggingSteps, self.nFeatures, self.stage):
             
             if stage == datasetToUse:                                                                                     ## There is normally only one model that fits here !!!!
 
@@ -338,17 +339,17 @@ class Numerai(object):
                     self.finalPrediction[dataset]['final_prediction'.format(name, step+1)] = gscv.predict_proba(inter[dataset])[:,1]
 
         print('Total running time {}'.format(diff(datetime.now(), time)))
-        print('Final log loss : {}\n'.format(log_loss(Ytrain['valid'], inter['valid']['final_prediction'.format(name,step+1)])))                        
+        print('Final log loss : {}\n'.format(log_loss(self.Ytrain['valid'], self.finalPrediction['valid']['final_prediction'.format(name,step+1)])))                        
 
 
 
     def submit(self, submissionNumber, week):
         submit = pd.DataFrame()
         submit['id'] = self.ids
-        submit['probability'] = finalPrediction['real_data']
+        submit['probability'] = self.finalPrediction['real_data']
 
     # Saving prediction
-        submit.to_csv('../../../Datasets/Numerai/{0}/submission{1}.csv'.format(week,submissionNumber), index = False)
+        submit.to_csv('../../../Datasets/Numerai/{0}/submission{1}.csv'.format(week, submissionNumber), index = False)
 
     # Automated submission through the numerai API
         pass
