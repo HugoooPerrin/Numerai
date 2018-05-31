@@ -12,7 +12,7 @@ from scipy.special import expit
 # --------------------------------------------------------------
 
 
-def train(num_epoch, model, train_loader, optimizer, criterion, display_step=500, valid_loader=None, use_GPU=True):
+def trainNN(num_epoch, model, train_loader, optimizer, criterion, display_step=500, valid_loader=None, use_GPU=True):
 
     if use_GPU:
         model = model.cuda()
@@ -50,8 +50,8 @@ def train(num_epoch, model, train_loader, optimizer, criterion, display_step=500
             # Loss
             loss = criterion(outputs, labels)
 
-            del inputs, labels  # Useful ?
-
+            del inputs, labels 
+            
             # Backward 
             loss.backward()
 
@@ -94,7 +94,8 @@ def train(num_epoch, model, train_loader, optimizer, criterion, display_step=500
                     step_number = 0
 
 
-def predict(model, dataset_loader, use_GPU=True):
+
+def predictNN(model, dataset_loader, use_GPU=True):
 
     model.eval()
 

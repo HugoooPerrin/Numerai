@@ -13,17 +13,18 @@ class NN(nn.Module):
         super(NN, self).__init__()
 
         self.linear = nn.Sequential(
-            nn.Linear(50, 30),
+            nn.Linear(20, 10),
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(30, 10),
+            nn.Linear(10, 5),
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(10, 1))
+            nn.Linear(5, 1))
         
     def forward(self, x):
         out = self.linear(x)
         return out
+
 
 
 class CNN(nn.Module):
@@ -51,6 +52,7 @@ class CNN(nn.Module):
         out = out.view(-1, 23*10)
         out = self.fc(out)
         return out
+
 
 
 class Inception(nn.Module):

@@ -77,7 +77,7 @@ for i in range(CV):
 
     valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset,
                                                batch_size=batch_size,
-                                               shuffle=False, 
+                                               shuffle=False,
                                                num_workers = 8)
 
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset,

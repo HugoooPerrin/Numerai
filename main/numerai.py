@@ -35,9 +35,12 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
 
-# Perso
-# sys.path.append('../')
-# from pytorch import models, utils
+# Deep learning
+sys.path.append('../pytorch/')
+from models import NN
+from utils import trainNN, predictNN
+import torch.utils.data as utils
+import torch.optim as optim
 
 # Utils
 def diff(t_a, t_b):
@@ -63,6 +66,8 @@ class Numerai(object):
         self.baggingSteps = []
         self.nFeatures = []
         self.stage = []
+
+        self.notYetNN = true
 
 
 
@@ -255,12 +260,10 @@ class Numerai(object):
 
 
 
-    def fit_tune(self, nCores=-1, evaluate=True, interaction=None):
-
-        self.stageNumber = max(self.stage)-1
+    def fit_tune(self, nCores=-1, stageNumber=1, neuralNetworkCompiler=None, evaluate=True, interaction=None):
 
     # Loading data:
-        self.load_data(self.week, self.stageNumber, evaluate)
+        self.load_data(self.week, stageNumber, evaluate)
 
     # Defining score
 
@@ -275,9 +278,9 @@ class Numerai(object):
         features = [name for name in self.Xtrain[1].columns]
         time1 = datetime.now()
 
-        self.firstStagePrediction = {}
+        firstStagePrediction = {}
         for dataset in self.Xtrain:
-            self.firstStagePrediction[dataset] = pd.DataFrame()
+            firstStagePrediction[dataset] = pd.DataFrame()
 
         for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.baggingSteps, self.nFeatures, self.stage):
             
@@ -311,27 +314,31 @@ class Numerai(object):
 
                 # Saving best predictions
                     for dataset in self.Xtrain:
-                        self.firstStagePrediction[dataset]['{}_prediction_{}'.format(name, step+1)] = gscv.predict_proba(inter[dataset])[:,1]
+                        firstStagePrediction[dataset]['{}_prediction_{}'.format(name, step+1)] = gscv.predict_proba(inter[dataset])[:,1]
+
+                    del inter
 
                     print('done in {}'.format(diff(datetime.now(), time2)))
                     if evaluate:
-                        print('log loss : {}\n'.format(log_loss(self.Ytrain['test'], self.firstStagePrediction['test']['{}_prediction_{}'.format(name,step+1)])))
+                        print('log loss : {}\n'.format(log_loss(self.Ytrain['test'], firstStagePrediction['test']['{}_prediction_{}'.format(name,step+1)])))
+
+        del self.Xtrain[1], self.Ytrain[1]
 
         print('\nFirst stage running time {}'.format(diff(datetime.now(), time1)))
 
     # Second stage
 
-        if self.stageNumber == 2:
+        if stageNumber == 2:
 
             print('\n\n---------------------------------------------')
             print('>> Processing second stage\n')
 
-            features = [name for name in self.firstStagePrediction[1].columns]
+            features = [name for name in firstStagePrediction[1].columns]
             time1 = datetime.now()
 
-            self.secondStagePrediction = {}
+            secondStagePrediction = {}
             for dataset in self.Xtrain:
-                self.secondStagePrediction[dataset] = pd.DataFrame()
+                secondStagePrediction[dataset] = pd.DataFrame()
 
             for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.baggingSteps, self.nFeatures, self.stage):
             
@@ -348,7 +355,7 @@ class Numerai(object):
 
                         inter = {}
                         for dataset in self.Xtrain:
-                            inter[dataset] = self.firstStagePrediction[dataset][features[:nFeatures]]
+                            inter[dataset] = firstStagePrediction[dataset][features[:nFeatures]]
 
                     # Adding metafeatures
                         try:
@@ -365,60 +372,183 @@ class Numerai(object):
                                                                                                                   
                     # Saving best predictions
                         for dataset in self.Xtrain:
-                            self.secondStagePrediction[dataset]['{}_prediction_{}'.format(name, step+1)] = gscv.predict_proba(inter[dataset])[:,1]
+                            secondStagePrediction[dataset]['{}_prediction_{}'.format(name, step+1)] = gscv.predict_proba(inter[dataset])[:,1]
+
+                        del inter
 
                         print('done in {}'.format(diff(datetime.now(), time2)))
                         if evaluate:
-                            print('log loss : {}\n'.format(log_loss(self.Ytrain['test'], self.secondStagePrediction['test']['{}_prediction_{}'.format(name,step+1)])))
+                            print('log loss : {}\n'.format(log_loss(self.Ytrain['test'], secondStagePrediction['test']['{}_prediction_{}'.format(name,step+1)])))
+
+            del self.Xtrain[2], self.Ytrain[2]
 
             print('Second stage running time {}'.format(diff(datetime.now(), time1)))
 
     # Compilation
 
-        self.finalPrediction = {}
-        for dataset in self.Xtrain:
-            self.finalPrediction[dataset] = pd.DataFrame()
-
-        if self.stageNumber == 1:
-            compilation_data = self.firstStagePrediction
-            datasetToUse = 2
-        elif self.stageNumber == 2:
-            compilation_data = self.secondStagePrediction
-            datasetToUse = 3
+        if stageNumber == 1:
+            self.compilation_data = firstStagePrediction
+            self.datasetToUse = 2
+        elif stageNumber == 2:
+            self.compilation_data = secondStagePrediction
+            self.datasetToUse = 3
 
         # Adding metafeatures
         try:
             for feature, stage in zip(self.metafeatureName, self.metafeatureStage):
-                if stage == datasetToUse:
+                if stage == self.datasetToUse:
                     for dataset in self.Xtrain:
-                        inter[dataset][feature] = self.metafeature[dataset][feature]
+                        self.compilation_data[dataset][feature] = self.metafeature[dataset][feature]
         except:
             pass
 
-        # Tuning
-        for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.baggingSteps, self.nFeatures, self.stage):
-            
-            if stage == datasetToUse:                                                                                     ## There is normally only one model that fits here !!!!
+        if !neuralNetworkCompiler:
 
-                print('\n\n---------------------------------------------')
-                print('>> Processing compilation [{}]\n'.format(name))
+            self.finalPrediction = {}
+            for dataset in self.Xtrain:
+                self.finalPrediction[dataset] = pd.DataFrame()
 
-                gscv = GridSearchCV(model, parameters, scoring = score, n_jobs = nCores)
-                gscv.fit(compilation_data[datasetToUse], self.Ytrain[datasetToUse])                                       ## COMPILATION TRAINING ON SECOND STAGE PREDICTION OF XTRAIN3
-                                                                                                                          ## IF THERE IS TWO STAGES, ELSE ON XTRAIN2
-                # Final prediction
-                for dataset in self.Xtrain:
-                    self.finalPrediction[dataset]['final_prediction'] = gscv.predict_proba(compilation_data[dataset])[:,1]
+            # Tuning
+            for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.baggingSteps, self.nFeatures, self.stage):
+                
+                if stage == self.datasetToUse:                                                                                     ## There is normally only one model that fits here !!!!
 
-        print('\nTotal running time {}'.format(diff(datetime.now(), time)))
+                    print('\n\n---------------------------------------------')
+                    print('>> Processing compilation [{}]\n'.format(name))
+
+                    gscv = GridSearchCV(model, parameters, scoring = score, n_jobs = nCores)
+                    gscv.fit(self.compilation_data[self.datasetToUse], self.Ytrain[self.datasetToUse])                                       ## COMPILATION TRAINING ON SECOND STAGE PREDICTION OF XTRAIN3
+                                                                                                                              ## IF THERE IS TWO STAGES, ELSE ON XTRAIN2
+                    # Final prediction
+                    for dataset in self.Xtrain:
+                        self.finalPrediction[dataset]['final_prediction'] = gscv.predict_proba(self.compilation_data[dataset])[:,1]
+
+            print('\nTotal running time {}'.format(diff(datetime.now(), time)))
+            if evaluate:
+                print('\nFinal test log loss : %.5f' %
+                    (log_loss(self.Ytrain['test'], self.finalPrediction['test']['final_prediction'])))                        
+                print('Final valid log loss : %.5f\n' %
+                    (log_loss(self.Ytrain['valid'], self.finalPrediction['valid']['final_prediction'])))
+
+
+    def neuralNetworkCompiler(self, learningRate=0.0001, batch=64, epoch=2, cvNumber=1, displayStep=10000, evaluate=True, useGPU=False):
+
+        print('\n\n---------------------------------------------')
+        print('>> Processing compilation [Neural Network]\n')
+
+    # Data
+        self.finalPrediction = {}
+        for dataset in self.Xtrain:
+            self.finalPrediction[dataset] = pd.DataFrame()
+
+        if self.notYetNN:
+            for dataset in self.Xtrain:
+                self.compilation_data[dataset] = np.array(self.compilation_data[dataset])
+                self.Ytrain[dataset] = np.array(self.Ytrain[dataset].values)
+                self.Ytrain[dataset] = self.Ytrain[dataset].reshape(self.Ytrain[dataset].shape[0], 1)
+
+            self.compilation_data[self.datasetToUse] = np.concatenate((self.compilation_data[self.datasetToUse], self.compilation_data['test']), axis=0)
+            del self.compilation_data['test']
+            self.notYetNN = False
+
         if evaluate:
-            print('\nFinal test log loss : %.5f' %
-                (log_loss(self.Ytrain['test'], self.finalPrediction['test']['final_prediction'])))                        
-            print('Final valid log loss : %.5f\n' %
-                (log_loss(self.Ytrain['valid'], self.finalPrediction['valid']['final_prediction'])))
+    # Tuning hyperparameter
+            cvScore = 0
 
-        # Check consistency
-            pass                        
+            time = datetime.now()
+
+            for i in range(cvNumber):
+                print('\nLoop number {}'.format(i+1))
+
+                Xtrain, Xvalid, Ytrain, Yvalid = train_test_split(self.compilation_data[self.datasetToUse], self.Ytrain[self.datasetToUse], test_size=0.25)
+
+            # Tensor
+
+                train_dataset = torch.utils.data.TensorDataset(torch.FloatTensor(Xtrain), 
+                                                               torch.FloatTensor(Ytrain))
+
+                validation_dataset = torch.utils.data.TensorDataset(torch.FloatTensor(Xvalid), 
+                                                                    torch.FloatTensor(Yvalid))
+
+                valid_dataset = torch.FloatTensor(self.compilation_data['valid'])
+
+            # Loader
+
+                train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                                           batch_size=batch,
+                                                           shuffle=True,
+                                                           num_workers=8)
+
+                validation_loader = torch.utils.data.DataLoader(dataset=validation_dataset,
+                                                                batch_size=batch,
+                                                                shuffle=False, 
+                                                                num_workers=8)
+
+                valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset,
+                                                           batch_size=batch,
+                                                           shuffle=False,
+                                                           num_workers=8)
+            # Model
+                net = NN()
+
+            # Loss function
+                criterion = nn.BCEWithLogitsLoss()
+                
+            # Optimization algorithm
+                optimizer = optim.RMSprop(net.parameters(), lr=learningRate, alpha=0.99, eps=1e-08, weight_decay=0, momentum=0.9)
+
+            # Training model
+                trainNN(epoch, net, train_loader, optimizer, criterion, display_step=displayStep, valid_loader=validation_loader, use_GPU=useGPU)
+
+            # Predicting
+                validPrediction = predictNN(net, valid_loader, use_GPU=useGPU)
+                
+            # Performance measuring
+                score = log_loss(self.Ytrain['valid'], testPredictions)
+
+                cvScore += score*(1/cvNumber)
+
+                print("\nModel intermediate score: %.6f" % score)
+
+            print("\nModel test score: %.6f\n" % cvScore)
+            print('\nRunning time {}'.format(diff(datetime.now(), time)))
+
+        else:
+            time = datetime.now()
+
+        # Tensor
+            train_dataset = torch.utils.data.TensorDataset(torch.FloatTensor(self.compilation_data[self.datasetToUse]), 
+                                                           torch.FloatTensor(self.Ytrain[self.datasetToUse]))
+
+            real_dataset = torch.FloatTensor(self.compilation_data['real_data'])
+
+        # Loader
+            train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                                       batch_size=batch,
+                                                       shuffle=True,
+                                                       num_workers=8)
+
+            real_loader = torch.utils.data.DataLoader(dataset=real_dataset,
+                                                      batch_size=batch,
+                                                      shuffle=False,
+                                                      num_workers=8)
+        # Model
+            net = NN()
+
+        # Loss function
+            criterion = nn.BCEWithLogitsLoss()
+            
+        # Optimization algorithm
+            optimizer = optim.RMSprop(net.parameters(), lr=learningRate, alpha=0.99, eps=1e-08, weight_decay=0, momentum=0.9)
+
+        # Training model
+            trainNN(num_epoch, net, train_loader, optimizer, criterion, display_step=displayStep, valid_loader=None, use_GPU=useGPU)
+
+        # Predicting
+            self.finalPrediction['real_data'] = predictNN(net, real_loader, use_GPU=useGPU)
+
+            print('\nRunning time {}'.format(diff(datetime.now(), time)))
+
 
 
     def check_consistency(self):
@@ -427,8 +557,6 @@ class Numerai(object):
 
 
     def submit(self, nCores, submissionNumber, week):
-
-        self.fit_tune(nCores, evaluate=False, interaction=None)
 
         submit = pd.DataFrame()
         submit['id'] = self.ids
