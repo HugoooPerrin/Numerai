@@ -53,14 +53,13 @@ stacking.fit_tune(nCores, neuralNetworkCompiler=False, evaluate=True, interactio
 
 
 ###### DEEP LEARNING
-stacking.neuralNetworkCompiler(learningRate=0.0001, batch=64, epoch=2, cvNumber=2, displayStep=10000, evaluate=True, useGPU=True)
+# stacking.neuralNetworkCompiler(learningRate=0.0001, batch=64, epoch=2, cvNumber=2, displayStep=10000, evaluate=True, useGPU=True)
 
 
 #=========================================================================================================
 #================================ 4. PREDICTION
 
-# stacking.fit_tune(nCores, neuralNetworkCompiler=False, evaluate=False, interaction=None)
-# stacking.neuralNetworkCompiler(learningRate=0.0001, batch=64, epoch=2, cvNumber=2, displayStep=10000, evaluate=False, useGPU=True)
+
 # stacking.submit(nCores=-1, submissionNumber=2, week=109)
 
 

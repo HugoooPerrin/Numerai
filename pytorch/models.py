@@ -13,13 +13,13 @@ class NN(nn.Module):
         super(NN, self).__init__()
 
         self.linear = nn.Sequential(
-            nn.Linear(20, 10),
+            nn.Linear(6, 6),
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(10, 5),
+            nn.Linear(6, 3),
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(5, 1))
+            nn.Linear(3, 1))
         
     def forward(self, x):
         out = self.linear(x)

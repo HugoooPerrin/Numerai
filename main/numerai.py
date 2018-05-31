@@ -41,6 +41,8 @@ from models import NN
 from utils import trainNN, predictNN
 import torch.utils.data as utils
 import torch.optim as optim
+import torch.nn as nn
+import torch
 
 # Utils
 def diff(t_a, t_b):
@@ -67,7 +69,7 @@ class Numerai(object):
         self.nFeatures = []
         self.stage = []
 
-        self.notYetNN = true
+        self.notYetNN = True
 
 
 
@@ -260,7 +262,7 @@ class Numerai(object):
 
 
 
-    def fit_tune(self, nCores=-1, stageNumber=1, neuralNetworkCompiler=None, evaluate=True, interaction=None):
+    def fit_tune(self, nCores=-1, stageNumber=1, neuralNetworkCompiler=False, evaluate=True, interaction=None):
 
     # Loading data:
         self.load_data(self.week, stageNumber, evaluate)
@@ -273,7 +275,7 @@ class Numerai(object):
     # First stage
 
         print('\n---------------------------------------------')
-        print('>> Processing first stage\n')
+        print('>> Processing first stage')
 
         features = [name for name in self.Xtrain[1].columns]
         time1 = datetime.now()
@@ -285,7 +287,7 @@ class Numerai(object):
         for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.baggingSteps, self.nFeatures, self.stage):
             
             if stage == 1:
-                print('>> Processing {} ------\n'.format(name))
+                print('\n>> Processing {} ------\n'.format(name))
 
                 for step in range(baggingSteps):
         
@@ -331,7 +333,7 @@ class Numerai(object):
         if stageNumber == 2:
 
             print('\n\n---------------------------------------------')
-            print('>> Processing second stage\n')
+            print('>> Processing second stage')
 
             features = [name for name in firstStagePrediction[1].columns]
             time1 = datetime.now()
@@ -343,7 +345,7 @@ class Numerai(object):
             for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.baggingSteps, self.nFeatures, self.stage):
             
                 if stage == 2:
-                    print('>> Processing {} ------\n'.format(name))
+                    print('\n>> Processing {} ------\n'.format(name))
 
                     for step in range(baggingSteps):
             
@@ -402,7 +404,7 @@ class Numerai(object):
         except:
             pass
 
-        if !neuralNetworkCompiler:
+        if not neuralNetworkCompiler:
 
             self.finalPrediction = {}
             for dataset in self.Xtrain:
@@ -444,10 +446,13 @@ class Numerai(object):
         if self.notYetNN:
             for dataset in self.Xtrain:
                 self.compilation_data[dataset] = np.array(self.compilation_data[dataset])
-                self.Ytrain[dataset] = np.array(self.Ytrain[dataset].values)
-                self.Ytrain[dataset] = self.Ytrain[dataset].reshape(self.Ytrain[dataset].shape[0], 1)
+                if dataset != 'real_data':
+                    self.Ytrain[dataset] = np.array(self.Ytrain[dataset].values)
+                    self.Ytrain[dataset] = self.Ytrain[dataset].reshape(self.Ytrain[dataset].shape[0], 1)
 
             self.compilation_data[self.datasetToUse] = np.concatenate((self.compilation_data[self.datasetToUse], self.compilation_data['test']), axis=0)
+            self.Ytrain[self.datasetToUse] = np.concatenate((self.Ytrain[self.datasetToUse], self.Ytrain['test']), axis=0)
+
             del self.compilation_data['test']
             self.notYetNN = False
 
@@ -504,13 +509,13 @@ class Numerai(object):
                 validPrediction = predictNN(net, valid_loader, use_GPU=useGPU)
                 
             # Performance measuring
-                score = log_loss(self.Ytrain['valid'], testPredictions)
+                score = log_loss(self.Ytrain['valid'], validPrediction)
 
                 cvScore += score*(1/cvNumber)
 
-                print("\nModel intermediate score: %.6f" % score)
+                print("\nIntermediate score: %.6f" % score)
 
-            print("\nModel test score: %.6f\n" % cvScore)
+            print("\nTest score: %.6f\n" % cvScore)
             print('\nRunning time {}'.format(diff(datetime.now(), time)))
 
         else:
@@ -556,7 +561,7 @@ class Numerai(object):
 
 
 
-    def submit(self, nCores, submissionNumber, week):
+    def submit(self, submissionNumber, week):
 
         submit = pd.DataFrame()
         submit['id'] = self.ids
