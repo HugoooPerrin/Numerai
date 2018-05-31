@@ -1,31 +1,44 @@
+
+
+
+
 """
 Running algorithm to search best fitting model
+
+
+Next steps:
+    - Try meta features
+    - Neural networks
+    - Consistency check
+    - Feature interaction / polynomial
+    - Using era ?
+    - hardcore EDA
 """
+
+
 
 #=========================================================================================================
 #================================ 0. MODULE
+
 
 # Numerai class
 from numerai import Numerai
 
 # Machine Learning models
-from xgboost import XGBClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import ExtraTreesClassifier
-from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.linear_model import SGDClassifier
-from sklearn.linear_model import LinearRegression
 from lightgbm import LGBMClassifier
-from sklearn.ensemble import AdaBoostClassifier
-from sklearn.neighbors import KNeighborsClassifier
+from xgboost import XGBClassifier
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.linear_model import SGDClassifier
+
+from sklearn.ensemble import AdaBoostClassifier     # To try
+from sklearn.neighbors import KNeighborsClassifier  # To try (Too big dataset ?)
 
 
 #=========================================================================================================
-#================================ 1. DATA
+#================================ 1. CLASS
 
 
-stacking = Numerai(stageNumber=1)
-stacking.load_data(109)
+stacking = Numerai(week=109)
 
 
 #=========================================================================================================
@@ -44,77 +57,79 @@ stacking.load_data(109)
 nCores = -1
 
 
-models = [ExtraTreesClassifier(n_jobs = nCores, 
-                               criterion = 'entropy',
-                               max_depth = 3,
-                               n_estimators = 50,
-                               bootstrap = True),
-          
-          ExtraTreesClassifier(n_jobs = nCores, 
-                               criterion = 'gini',
-                               max_depth = 3,
-                               n_estimators = 50,
-                               bootstrap = True),
-          
-          XGBClassifier(learning_rate = 0.5, 
-                        max_depth = 3, 
-                        n_estimators = 75,
-                        nthread = nCores),
-          
-          SGDClassifier(loss = 'log', 
-                        penalty = 'elasticnet', 
-                        learning_rate = 'optimal',
-                        max_iter = 5,
-                        tol = None,
-                        n_jobs = nCores),
-         
-          LGBMClassifier(objective = 'binary',
-                         max_depth = 2,
-                         n_estimators = 20,
-                         reg_lambda = 0.001,
-                         n_jobs = nCores)]
+models = {'ExtraTrees1':[1, 5, 15, ExtraTreesClassifier(n_jobs = nCores, 
+                                                        criterion = 'entropy',
+                                                        max_depth = 4,
+                                                        bootstrap = True),
 
-parameters = [{'min_samples_split' : [200, 1000],                               # ExtraTreesClassifier entropy
-               'min_samples_leaf' : [200, 1000]},
-
-              {'min_samples_split' : [200, 1000],                               # ExtraTreesClassifier gini
-               'min_samples_leaf' : [200, 1000]},
-
-              {'subsample' : [0.5, 0.75, 1]},                                   # XGBoostClassifier
-
-              {'alpha' : [0.001, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 1],            # SGDClassifier
-               'l1_ratio' : [0.001, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 1]},
-
-              {'num_leaves ' : [25, 100],                                       # Lightgbm
-               'min_samples_leaf' : [200, 1000]}]
-
-modelNames = ['ExtraTrees1',
-              'ExtraTrees2',
-              'XGBoost', 
-              'SGDC',
-              'Lightgbm']
-
-nFeatures = [25, 25, 40, 40, 35]
-
-baggingSteps = [7, 7, 3, 3, 1]
-
-stages = [1, 1, 0, 0, 2]
+                                    {'min_samples_split': [200, 1000],
+                                     'n_estimators': [50, 100],                               
+                                     'min_samples_leaf': [200, 1000]}],
 
 
-for name, model, parameters, baggingSteps, nFeatures, stage in zip(modelNames, models, parameters, baggingSteps, nFeatures, stages):
-    
-    stacking.add_model(name, model, parameters, baggingSteps, nFeatures, stage)
+         'ExtraTrees2': [1, 5, 15, ExtraTreesClassifier(n_jobs = nCores, 
+                                                        criterion = 'gini',
+                                                        max_depth = 5,
+                                                        bootstrap = False),
+
+                                    {'min_samples_split': [200, 1000],
+                                     'n_estimators': [50, 100],   
+                                     'min_samples_leaf': [200, 1000]}],
+
+
+         'XGBoost':     [0, 2, 40, XGBClassifier(max_depth = 3, 
+                                                 n_estimators = 30,
+                                                 nthread = nCores),
+ 
+                                    {'subsample': [0.5, 0.75, 1],                                    
+                                     'learning_rate': [0.01, 0.1, 0.5, 1]}],
+
+
+         'SGDC':        [0, 5, 35, SGDClassifier(loss = 'log', 
+                                                 penalty = 'elasticnet', 
+                                                 learning_rate = 'optimal',
+                                                 max_iter = 10,
+                                                 tol = None,
+                                                 n_jobs = nCores),
+
+                                    {'alpha': [0.001, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 1],           
+                                     'l1_ratio': [0.001, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 1]}],
+
+
+         'LightGBM1':   [1, 15, 15, LGBMClassifier(objective = 'binary',
+                                                  max_depth = 3,
+                                                  reg_lambda = 0.01,
+                                                  n_jobs = nCores), 
+
+                                    {'n_estimators': [25, 50, 100],                                  
+                                     'min_child_samples': [50, 500, 1000],
+                                     'num_leaves': [128, 1024]}],
+
+
+         'LightGBM2':   [2, 5, 25, LGBMClassifier(objective = 'binary',
+                                                  max_depth = 3,
+                                                  reg_lambda = 0.001,
+                                                  n_jobs = nCores), 
+
+                                    {'n_estimators': [25, 50, 100],                                  
+                                     'min_child_samples': [50, 500, 1000],
+                                     'num_leaves': [128, 512, 1024]}]}
+
+
+stacking.add_model(models)
 
 
 #=========================================================================================================
 #================================ 4. TRAINING MODEL
 
 
-stacking.fit_tune(nCores)
+stacking.fit_tune(nCores, evaluate=True, interaction=None)
 
 
 #=========================================================================================================
 #================================ 5. PREDICTION
 
 
-# stacking.submit(submissionNumber=2, week=109)
+# stacking.submit(nCores=-1, submissionNumber=2, week=109)
+
+

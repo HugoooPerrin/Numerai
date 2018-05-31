@@ -53,9 +53,8 @@ class Numerai(object):
 
 
 
-    def __init__(self, week, stageNumber):
+    def __init__(self, week):
 
-        self.stageNumber = stageNumber
         self.week = week
 
         self.modelNames = []
@@ -67,7 +66,7 @@ class Numerai(object):
 
 
 
-    def load_data(self, week, test):
+    def load_data(self, week, stageNumber, test):
         print('\n---------------------------------------------')
         print('>> Loading data', end='...')
         Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(week))
@@ -88,7 +87,7 @@ class Numerai(object):
         Xvalid.drop(['id', 'era', 'data_type', 'target'], inplace = True, axis = 1)
         real_data.drop(['id', 'era', 'data_type', 'target'], inplace = True, axis = 1)
 
-        if self.stageNumber == 1:
+        if stageNumber == 1:
             if test:
                 # Xtrain1 = 40%, Xtrain2 = 40%, Xtest = 20%
                 Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=0.6)
@@ -136,7 +135,7 @@ class Numerai(object):
                                2: Ytrain2,
                                'valid': Yvalid}
 
-        elif self.stageNumber == 2:
+        elif stageNumber == 2:
             if test:
                 # Xtrain1 = 30%, Xtrain2 = 30%, Xtrain3 = 30%, Xtest = 10%
                 Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=0.7)
@@ -236,17 +235,18 @@ class Numerai(object):
 
 
 
-    def add_model(self, name, model, parameters, baggingSteps, nFeatures, stage): 
+    def add_model(self, models): 
 
         """
         A model should be sklearn-friendly and have a "predict_proba" method
         """
-        self.modelNames.append(name)
-        self.models.append(model)
-        self.parameters.append(parameters)
-        self.baggingSteps.append(baggingSteps)
-        self.nFeatures.append(nFeatures)
-        self.stage.append(stage)
+        for name in models:
+            self.modelNames.append(name)
+            self.baggingSteps.append(models[name][1])
+            self.nFeatures.append(models[name][2])
+            self.stage.append(models[name][0])
+            self.models.append(models[name][3])
+            self.parameters.append(models[name][4])
 
 
 
@@ -255,10 +255,12 @@ class Numerai(object):
 
 
 
-    def fit_tune(self, nCores=-1, evaluate=True):
+    def fit_tune(self, nCores=-1, evaluate=True, interaction=None):
+
+        self.stageNumber = max(self.stage)-1
 
     # Loading data:
-        self.load_data(self.week, evaluate)
+        self.load_data(self.week, self.stageNumber, evaluate)
 
     # Defining score
 
@@ -280,7 +282,7 @@ class Numerai(object):
         for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.baggingSteps, self.nFeatures, self.stage):
             
             if stage == 1:
-                print('>> Processing {}\n'.format(name))
+                print('>> Processing {} ------\n'.format(name))
 
                 for step in range(baggingSteps):
         
@@ -334,7 +336,7 @@ class Numerai(object):
             for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.baggingSteps, self.nFeatures, self.stage):
             
                 if stage == 2:
-                    print('>> Processing {}\n'.format(name))
+                    print('>> Processing {} ------\n'.format(name))
 
                     for step in range(baggingSteps):
             
@@ -373,9 +375,6 @@ class Numerai(object):
 
     # Compilation
 
-        print('\n\n---------------------------------------------')
-        print('>> Processing compilation\n')
-
         self.finalPrediction = {}
         for dataset in self.Xtrain:
             self.finalPrediction[dataset] = pd.DataFrame()
@@ -401,6 +400,9 @@ class Numerai(object):
             
             if stage == datasetToUse:                                                                                     ## There is normally only one model that fits here !!!!
 
+                print('\n\n---------------------------------------------')
+                print('>> Processing compilation [{}]\n'.format(name))
+
                 gscv = GridSearchCV(model, parameters, scoring = score, n_jobs = nCores)
                 gscv.fit(compilation_data[datasetToUse], self.Ytrain[datasetToUse])                                       ## COMPILATION TRAINING ON SECOND STAGE PREDICTION OF XTRAIN3
                                                                                                                           ## IF THERE IS TWO STAGES, ELSE ON XTRAIN2
@@ -410,11 +412,24 @@ class Numerai(object):
 
         print('\nTotal running time {}'.format(diff(datetime.now(), time)))
         if evaluate:
-            print('Final log loss : {}\n'.format(log_loss(self.Ytrain['test'], self.finalPrediction['test']['final_prediction'])))                        
+            print('\nFinal test log loss : %.5f' %
+                (log_loss(self.Ytrain['test'], self.finalPrediction['test']['final_prediction'])))                        
+            print('Final valid log loss : %.5f\n' %
+                (log_loss(self.Ytrain['valid'], self.finalPrediction['valid']['final_prediction'])))
+
+        # Check consistency
+            pass                        
+
+
+    def check_consistency(self):
+        pass
 
 
 
-    def submit(self, submissionNumber, week):
+    def submit(self, nCores, submissionNumber, week):
+
+        self.fit_tune(nCores, evaluate=False, interaction=None)
+
         submit = pd.DataFrame()
         submit['id'] = self.ids
         submit['probability'] = self.finalPrediction['real_data']
