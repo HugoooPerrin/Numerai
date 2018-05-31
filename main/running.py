@@ -1,15 +1,6 @@
-
-
-
-
-
-
 """
 Running algorithm to search best fitting model
 """
-
-
-
 
 #=========================================================================================================
 #================================ 0. MODULE
@@ -18,7 +9,7 @@ Running algorithm to search best fitting model
 from numerai import Numerai
 
 # Machine Learning models
-# from xgboost import XGBClassifier
+from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.ensemble import GradientBoostingClassifier
@@ -50,14 +41,8 @@ stacking.load_data(109)
 #================================ 3. MODEL ARCHITECTURE
 
 
-nCores = 3
+nCores = -1
 
-
-modelNames = ['ExtraTrees1',
-              'ExtraTrees2',
-              # 'XGBoost', 
-              'SGDC',
-              'Lightgbm']
 
 models = [ExtraTreesClassifier(n_jobs = nCores, 
                                criterion = 'entropy',
@@ -71,10 +56,10 @@ models = [ExtraTreesClassifier(n_jobs = nCores,
                                n_estimators = 50,
                                bootstrap = True),
           
-#           XGBClassifier(learning_rate = 0.5, 
-#                         max_depth = 3, 
-#                         n_estimators = 75,
-#                         nthread = nCores),
+          XGBClassifier(learning_rate = 0.5, 
+                        max_depth = 3, 
+                        n_estimators = 75,
+                        nthread = nCores),
           
           SGDClassifier(loss = 'log', 
                         penalty = 'elasticnet', 
@@ -84,13 +69,10 @@ models = [ExtraTreesClassifier(n_jobs = nCores,
                         n_jobs = nCores),
          
           LGBMClassifier(objective = 'binary',
-                         max_depth = 3,
-                         n_estimators = 100,
+                         max_depth = 2,
+                         n_estimators = 20,
+                         reg_lambda = 0.001,
                          n_jobs = nCores)]
-
-
-## Rajouter des regressions logistic !
-
 
 parameters = [{'min_samples_split' : [200, 1000],                               # ExtraTreesClassifier entropy
                'min_samples_leaf' : [200, 1000]},
@@ -98,24 +80,29 @@ parameters = [{'min_samples_split' : [200, 1000],                               
               {'min_samples_split' : [200, 1000],                               # ExtraTreesClassifier gini
                'min_samples_leaf' : [200, 1000]},
 
-#               {'subsample' : [0.5, 0.75, 1]},                                   # XGBoostClassifier
+              {'subsample' : [0.5, 0.75, 1]},                                   # XGBoostClassifier
 
               {'alpha' : [0.001, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 1],            # SGDClassifier
                'l1_ratio' : [0.001, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 1]},
 
-              {# 'n_estimators': [50, 100, 200],                                  # Lightgbm
-               'num_leaves ' : [15, 40, 100, 500],
-               'min_samples_leaf' : [200, 1000],
-               'reg_lambda' : [0.001, 0.01, 0.05, 0.1, 0.5, 1]}]
+              {'num_leaves ' : [25, 100],                                       # Lightgbm
+               'min_samples_leaf' : [200, 1000]}]
 
-nFeatures = [15, 15, 35, None]
+modelNames = ['ExtraTrees1',
+              'ExtraTrees2',
+              'XGBoost', 
+              'SGDC',
+              'Lightgbm']
 
-baggingSteps = [5, 5, 5, 1]
+nFeatures = [25, 25, 40, 40, 35]
 
-stages = [1, 1, 1, 2]
+baggingSteps = [7, 7, 3, 3, 1]
+
+stages = [1, 1, 0, 0, 2]
 
 
 for name, model, parameters, baggingSteps, nFeatures, stage in zip(modelNames, models, parameters, baggingSteps, nFeatures, stages):
+    
     stacking.add_model(name, model, parameters, baggingSteps, nFeatures, stage)
 
 
@@ -130,4 +117,4 @@ stacking.fit_tune(nCores)
 #================================ 5. PREDICTION
 
 
-# stacking.submit(submissionNumber=1, week=109)
+# stacking.submit(submissionNumber=2, week=109)

@@ -53,9 +53,10 @@ class Numerai(object):
 
 
 
-    def __init__(self, stageNumber=1):
+    def __init__(self, week, stageNumber):
 
         self.stageNumber = stageNumber
+        self.week = week
 
         self.modelNames = []
         self.models = []
@@ -66,7 +67,7 @@ class Numerai(object):
 
 
 
-    def load_data(self, week):
+    def load_data(self, week, test):
         print('\n---------------------------------------------')
         print('>> Loading data', end='...')
         Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(week))
@@ -88,51 +89,109 @@ class Numerai(object):
         real_data.drop(['id', 'era', 'data_type', 'target'], inplace = True, axis = 1)
 
         if self.stageNumber == 1:
+            if test:
+                # Xtrain1 = 40%, Xtrain2 = 40%, Xtest = 20%
+                Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=0.6)
+                Xtrain2, Xtest, Ytrain2, Ytest = train_test_split(Xtrain2, Ytrain2, test_size=0.33)
+                print('done')
+                print('\nXtrain1: {}'.format(Xtrain1.shape),
+                      '\nYtrain1: {}'.format(Ytrain1.shape),
+                      '\nXtrain2: {}'.format(Xtrain2.shape),
+                      '\nYtrain2: {}'.format(Ytrain2.shape),
+                      '\nXtest: {}'.format(Xtest.shape),
+                      '\nYtest: {}'.format(Ytest.shape),
+                      '\nXvalid: {}'.format(Xvalid.shape),
+                      '\nYvalid: {}'.format(Yvalid.shape),
+                      '\nSubmit data: {}\n'.format(real_data.shape))
 
-            Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=0.4)
-            print('done')
-            print('\nXtrain1: {}'.format(Xtrain1.shape),
-                  '\nYtrain1: {}'.format(Ytrain1.shape),
-                  '\nXtrain2: {}'.format(Xtrain2.shape),
-                  '\nYtrain2: {}'.format(Ytrain2.shape),
-                  '\nXvalid: {}'.format(Xvalid.shape),
-                  '\nYvalid: {}'.format(Yvalid.shape),
-                  '\nSubmit data: {}\n'.format(real_data.shape))
+                self.Xtrain = {1: Xtrain1,
+                               2: Xtrain2,
+                               'test': Xtest,
+                               'valid': Xvalid,
+                               'real_data': real_data}
 
-            self.Xtrain = {1: Xtrain1,
-                           2: Xtrain2,
-                           'valid': Xvalid,
-                           'real_data': real_data}
+                self.Ytrain = {1: Ytrain1,
+                               2: Ytrain2,
+                               'test': Ytest,
+                               'valid': Yvalid}
 
-            self.Ytrain = {1: Ytrain1,
-                           2: Ytrain2,
-                           'valid': Yvalid}
+            else:
+                # Xtrain1 = 50%, Xtrain2 = 50%
+                Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=0.5)
+                print('done')
+                print('\nXtrain1: {}'.format(Xtrain1.shape),
+                      '\nYtrain1: {}'.format(Ytrain1.shape),
+                      '\nXtrain2: {}'.format(Xtrain2.shape),
+                      '\nYtrain2: {}'.format(Ytrain2.shape),
+                      '\nXvalid: {}'.format(Xvalid.shape),
+                      '\nYvalid: {}'.format(Yvalid.shape),
+                      '\nSubmit data: {}\n'.format(real_data.shape))
+
+                self.Xtrain = {1: Xtrain1,
+                               2: Xtrain2,
+                               'valid': Xvalid,
+                               'real_data': real_data}
+
+                self.Ytrain = {1: Ytrain1,
+                               2: Ytrain2,
+                               'valid': Yvalid}
 
         elif self.stageNumber == 2:
+            if test:
+                # Xtrain1 = 30%, Xtrain2 = 30%, Xtrain3 = 30%, Xtest = 10%
+                Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=0.7)
+                Xtrain2, Xtrain3, Ytrain2, Ytrain3 = train_test_split(Xtrain2, Ytrain2, test_size=0.57)
+                Xtrain3, Xtest, Ytrain3, Ytest = train_test_split(Xtrain3, Ytrain3, test_size=0.25)
+                print('done')
+                print('\nXtrain1: {}'.format(Xtrain1.shape),
+                      '\nYtrain1: {}'.format(Ytrain1.shape),
+                      '\nXtrain2: {}'.format(Xtrain2.shape),
+                      '\nYtrain2: {}'.format(Ytrain2.shape),
+                      '\nXtrain3: {}'.format(Xtrain3.shape),
+                      '\nYtrain3: {}'.format(Ytrain3.shape),
+                      '\nXtest: {}'.format(Xtest.shape),
+                      '\nYtest: {}'.format(Ytest.shape),
+                      '\nXvalid: {}'.format(Xvalid.shape),
+                      '\nYvalid: {}'.format(Yvalid.shape),
+                      '\nSubmit data: {}\n'.format(real_data.shape))
 
-            Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=0.6)
-            Xtrain2, Xtrain3, Ytrain2, Ytrain3 = train_test_split(Xtrain2, Ytrain2, test_size=0.5)
-            print('done')
-            print('\nXtrain1: {}'.format(Xtrain1.shape),
-                  '\nYtrain1: {}'.format(Ytrain1.shape),
-                  '\nXtrain2: {}'.format(Xtrain2.shape),
-                  '\nYtrain2: {}'.format(Ytrain2.shape),
-                  '\nXtrain3: {}'.format(Xtrain3.shape),
-                  '\nYtrain3: {}'.format(Ytrain3.shape),
-                  '\nXvalid: {}'.format(Xvalid.shape),
-                  '\nYvalid: {}'.format(Yvalid.shape),
-                  '\nSubmit data: {}\n'.format(real_data.shape))
+                self.Xtrain = {1: Xtrain1,
+                               2: Xtrain2,
+                               3: Xtrain3,
+                               'test': Xtest,
+                               'valid': Xvalid,
+                               'real_data': real_data}
 
-            self.Xtrain = {1: Xtrain1,
-                           2: Xtrain2,
-                           3: Xtrain3,
-                           'valid': Xvalid,
-                           'real_data': real_data}
+                self.Ytrain = {1: Ytrain1,
+                               2: Ytrain2,
+                               3: Ytrain3,
+                               'test': Ytest,
+                               'valid': Yvalid}
+            else:
+                # Xtrain1 = 33%, Xtrain2 = 33%, Xtrain3 = 33%
+                Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=0.67)
+                Xtrain2, Xtrain3, Ytrain2, Ytrain3 = train_test_split(Xtrain2, Ytrain2, test_size=0.5)
+                print('done')
+                print('\nXtrain1: {}'.format(Xtrain1.shape),
+                      '\nYtrain1: {}'.format(Ytrain1.shape),
+                      '\nXtrain2: {}'.format(Xtrain2.shape),
+                      '\nYtrain2: {}'.format(Ytrain2.shape),
+                      '\nXtrain3: {}'.format(Xtrain3.shape),
+                      '\nYtrain3: {}'.format(Ytrain3.shape),
+                      '\nXvalid: {}'.format(Xvalid.shape),
+                      '\nYvalid: {}'.format(Yvalid.shape),
+                      '\nSubmit data: {}\n'.format(real_data.shape))
 
-            self.Ytrain = {1: Ytrain1,
-                           2: Ytrain2,
-                           3: Ytrain3,
-                           'valid': Yvalid}
+                self.Xtrain = {1: Xtrain1,
+                               2: Xtrain2,
+                               3: Xtrain3,
+                               'valid': Xvalid,
+                               'real_data': real_data}
+
+                self.Ytrain = {1: Ytrain1,
+                               2: Ytrain2,
+                               3: Ytrain3,
+                               'valid': Yvalid}
 
 
 
@@ -196,7 +255,12 @@ class Numerai(object):
 
 
 
-    def fit_tune(self, nCores=-1):
+    def fit_tune(self, nCores=-1, evaluate=True):
+
+    # Loading data:
+        self.load_data(self.week, evaluate)
+
+    # Defining score
 
         score = make_scorer(score_func = log_loss)
         time = datetime.now()
@@ -248,7 +312,8 @@ class Numerai(object):
                         self.firstStagePrediction[dataset]['{}_prediction_{}'.format(name, step+1)] = gscv.predict_proba(inter[dataset])[:,1]
 
                     print('done in {}'.format(diff(datetime.now(), time2)))
-                    print('log loss : {}\n'.format(log_loss(self.Ytrain['valid'], self.firstStagePrediction['valid']['{}_prediction_{}'.format(name,step+1)])))
+                    if evaluate:
+                        print('log loss : {}\n'.format(log_loss(self.Ytrain['test'], self.firstStagePrediction['test']['{}_prediction_{}'.format(name,step+1)])))
 
         print('\nFirst stage running time {}'.format(diff(datetime.now(), time1)))
 
@@ -301,7 +366,8 @@ class Numerai(object):
                             self.secondStagePrediction[dataset]['{}_prediction_{}'.format(name, step+1)] = gscv.predict_proba(inter[dataset])[:,1]
 
                         print('done in {}'.format(diff(datetime.now(), time2)))
-                        print('log loss : {}\n'.format(log_loss(self.Ytrain['valid'], self.secondStagePrediction['valid']['{}_prediction_{}'.format(name,step+1)])))
+                        if evaluate:
+                            print('log loss : {}\n'.format(log_loss(self.Ytrain['test'], self.secondStagePrediction['test']['{}_prediction_{}'.format(name,step+1)])))
 
             print('Second stage running time {}'.format(diff(datetime.now(), time1)))
 
@@ -343,7 +409,8 @@ class Numerai(object):
                     self.finalPrediction[dataset]['final_prediction'] = gscv.predict_proba(compilation_data[dataset])[:,1]
 
         print('\nTotal running time {}'.format(diff(datetime.now(), time)))
-        print('Final log loss : {}\n'.format(log_loss(self.Ytrain['valid'], self.finalPrediction['valid']['final_prediction'])))                        
+        if evaluate:
+            print('Final log loss : {}\n'.format(log_loss(self.Ytrain['test'], self.finalPrediction['test']['final_prediction'])))                        
 
 
 
