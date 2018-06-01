@@ -515,8 +515,8 @@ class Numerai(object):
 
                 print("\nIntermediate score: %.6f" % score)
 
-            print("\nTest score: %.6f\n" % cvScore)
-            print('\nRunning time {}'.format(diff(datetime.now(), time)))
+            print("\nFinal valid log loss: %.6f\n" % cvScore)
+            print('\nTotal running time {}'.format(diff(datetime.now(), time)))
 
         else:
             time = datetime.now()

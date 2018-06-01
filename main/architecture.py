@@ -19,7 +19,7 @@ from sklearn.linear_model import SGDClassifier
 nCores = -1
 
 
-models = {'ExtraTrees1':[1, 3, 15, ExtraTreesClassifier(n_jobs = nCores, 
+models = {'ExtraTrees1':[0, 15, 15, ExtraTreesClassifier(n_jobs = nCores, 
                                                         criterion = 'entropy',
                                                         max_depth = 3,
                                                         bootstrap = True),
@@ -29,7 +29,7 @@ models = {'ExtraTrees1':[1, 3, 15, ExtraTreesClassifier(n_jobs = nCores,
                                      'min_samples_leaf': [200, 1000]}],
 
 
-         'ExtraTrees2': [1, 3, 15, ExtraTreesClassifier(n_jobs = nCores, 
+         'ExtraTrees2': [0, 15, 15, ExtraTreesClassifier(n_jobs = nCores, 
                                                         criterion = 'gini',
                                                         max_depth = 3,
                                                         bootstrap = False),
@@ -47,7 +47,7 @@ models = {'ExtraTrees1':[1, 3, 15, ExtraTreesClassifier(n_jobs = nCores,
                                      'learning_rate': [0.01, 0.1, 0.5, 1]}],
 
 
-         'SGDC':        [2, 5, 35, SGDClassifier(loss = 'log', 
+         'SGDC':        [0, 5, 35, SGDClassifier(loss = 'log', 
                                                  penalty = 'elasticnet', 
                                                  learning_rate = 'optimal',
                                                  max_iter = 10,
@@ -58,7 +58,7 @@ models = {'ExtraTrees1':[1, 3, 15, ExtraTreesClassifier(n_jobs = nCores,
                                      'l1_ratio': [0.001, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 1]}],
 
 
-         'LightGBM1':   [0, 10, 15, LGBMClassifier(objective = 'binary',
+         'LightGBM1':   [1, 10, 15, LGBMClassifier(objective = 'binary',
                                                    max_depth = 3,
                                                    reg_lambda = 0.01,
                                                    n_jobs = nCores), 
@@ -68,7 +68,7 @@ models = {'ExtraTrees1':[1, 3, 15, ExtraTreesClassifier(n_jobs = nCores,
                                      'num_leaves': [128, 1024]}],
 
 
-         'LightGBM2':   [0, 5, 25, LGBMClassifier(objective = 'binary',
+         'LightGBM2':   [2, 5, 25, LGBMClassifier(objective = 'binary',
                                                   max_depth = 3,
                                                   reg_lambda = 0.001,
                                                   n_jobs = nCores), 

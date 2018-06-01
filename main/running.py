@@ -24,7 +24,7 @@ Next steps:
 from numerai import Numerai
 
 # Architecture
-from architecture import models
+from architecture import models, nCores
 
 
 #=========================================================================================================
