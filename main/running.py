@@ -24,7 +24,13 @@ Next steps:
 from numerai import Numerai
 
 # Architecture
-from architecture import models, nCores
+from architecture import models
+
+try:
+    import torch
+    import torch.nn as nn
+except:
+    pass
 
 
 if __name__ == '__main__':
@@ -34,6 +40,7 @@ if __name__ == '__main__':
 
 
     stacking = Numerai(week=110)
+    nCores = -1
 
 
     #=========================================================================================================
@@ -49,18 +56,32 @@ if __name__ == '__main__':
     #================================ 3. TRAINING MODEL
 
 
-    stacking.add_model(models)
-    stacking.training(nCores, stageNumber=1, neuralNetworkCompiler=False, evaluate=True)
+    class NN(nn.Module):
 
-    # Always compile with sklearn model before neural nets 
-    stacking.compile(neuralNetworkCompiler=False)
-    stacking.compile(neuralNetworkCompiler=True, learningRate=0.0001, batch=64, epoch=2, cvNumber=1, displayStep=10000, evaluate=True, useGPU=False):
+        def __init__(self):
+            super(NN, self).__init__()
+
+            self.linear = nn.Sequential(
+                nn.Linear(38, 10),
+                nn.ReLU(),
+                nn.Dropout(0.5),
+                nn.Linear(10, 1))
+            
+        def forward(self, x):
+            out = self.linear(x)
+            return out
+
+    stacking.add_model(models)
+    stacking.training(nCores, stageNumber=1, neuralNetworkCompiler=False, evaluate=False)
+
+    stacking.compile(nCores, neuralNetworkCompiler=False)
+    # stacking.compile(nCores, neuralNetworkCompiler=True, architecture=NN(), learningRate=0.0001, batch=64, epoch=2, cvNumber=1, displayStep=1000, evaluate=False, useGPU=False)
 
 
     #=========================================================================================================
     #================================ 4. PREDICTION
 
 
-    # stacking.submit(nCores=-1, submissionNumber=1, week=110)
+    stacking.submit(submissionNumber=2, week=110)
 
 

@@ -38,7 +38,6 @@ from sklearn.model_selection import train_test_split
 # Deep learning
 try:
     sys.path.append('../pytorch/')
-    from models import NN
     from utils import trainNN, predictNN
     import torch.utils.data as utils
     import torch.optim as optim
@@ -79,11 +78,11 @@ class Numerai(object):
     def load_data(self, week, stageNumber, test):
         print('\n---------------------------------------------')
         print('>> Loading data', end='...')
-        # Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(week))
-        # Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(week))
+        Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(week))
+        Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(week))
 
-        Xtrain = pd.read_csv("../../Data/numerai_training_data.csv")
-        Xvalid = pd.read_csv("../../Data/numerai_tournament_data.csv")
+        # Xtrain = pd.read_csv("../../Data/numerai_training_data.csv")
+        # Xvalid = pd.read_csv("../../Data/numerai_tournament_data.csv")
 
         real_data = Xvalid.copy(True)
         self.ids = Xvalid['id']
@@ -414,12 +413,17 @@ class Numerai(object):
 
 
 
-    def compile(self, neuralNetworkCompiler=False, learningRate=0.0001, batch=64, epoch=2, cvNumber=1, displayStep=10000, evaluate=True, useGPU=False):
+    def compile(self, nCores=-1, neuralNetworkCompiler=False, architectureNN=None,evaluate=True, learningRate=0.0001, batch=64, epoch=2, cvNumber=1, displayStep=10000, useGPU=False):
 
-        # Data
-            self.finalPrediction = {}
-            for dataset in self.Xtrain:
-                self.finalPrediction[dataset] = pd.DataFrame()
+    # Defining score
+
+        score = make_scorer(score_func = log_loss)
+        time = datetime.now()
+        
+    # Data
+        self.finalPrediction = {}
+        for dataset in self.Xtrain:
+            self.finalPrediction[dataset] = pd.DataFrame()
 
         if neuralNetworkCompiler:
             print('\n\n---------------------------------------------')
@@ -476,7 +480,7 @@ class Numerai(object):
                                                                shuffle=False,
                                                                num_workers=8)
                 # Model
-                    net = NN()
+                    net = architectureNN
 
                 # Loss function
                     criterion = nn.BCEWithLogitsLoss()
@@ -520,7 +524,7 @@ class Numerai(object):
                                                           shuffle=False,
                                                           num_workers=8)
             # Model
-                net = NN()
+                net = architectureNN
 
             # Loss function
                 criterion = nn.BCEWithLogitsLoss()
@@ -551,7 +555,7 @@ class Numerai(object):
                     for dataset in self.Xtrain:
                         self.finalPrediction[dataset]['final_prediction'] = gscv.predict_proba(self.compilation_data[dataset])[:,1]
 
-            print('\nTotal running time {}'.format(diff(datetime.now(), time)))
+            print('\nCompilation running time {}'.format(diff(datetime.now(), time)))
             if evaluate:
                 print('\nFinal test log loss : %.5f' %
                     (log_loss(self.Ytrain['test'], self.finalPrediction['test']['final_prediction'])))                        

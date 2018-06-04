@@ -13,7 +13,7 @@ class NN(nn.Module):
         super(NN, self).__init__()
 
         self.linear = nn.Sequential(
-            nn.Linear(20, 10),
+            nn.Linear(38, 10),
             nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(10, 1))
