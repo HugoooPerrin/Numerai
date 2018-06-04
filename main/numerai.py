@@ -36,13 +36,16 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
 
 # Deep learning
-sys.path.append('../pytorch/')
-from models import NN
-from utils import trainNN, predictNN
-import torch.utils.data as utils
-import torch.optim as optim
-import torch.nn as nn
-import torch
+try:
+    sys.path.append('../pytorch/')
+    from models import NN
+    from utils import trainNN, predictNN
+    import torch.utils.data as utils
+    import torch.optim as optim
+    import torch.nn as nn
+    import torch
+except:
+    pass
 
 # Utils
 def diff(t_a, t_b):
@@ -76,11 +79,11 @@ class Numerai(object):
     def load_data(self, week, stageNumber, test):
         print('\n---------------------------------------------')
         print('>> Loading data', end='...')
-        Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(week))
-        Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(week))
+        # Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(week))
+        # Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(week))
 
-        # Xtrain = pd.read_csv("../../Data/numerai_training_data.csv")
-        # Xvalid = pd.read_csv("../../Data/numerai_tournament_data.csv")
+        Xtrain = pd.read_csv("../../Data/numerai_training_data.csv")
+        Xvalid = pd.read_csv("../../Data/numerai_tournament_data.csv")
 
         real_data = Xvalid.copy(True)
         self.ids = Xvalid['id']
@@ -235,6 +238,11 @@ class Numerai(object):
         if 'meanEncoding' in name:
             pass
 
+    ## Mean encoding
+
+        if 'KNNencoding' in name:
+            pass
+
     ## PCA
 
         if 'PCA' in name:
@@ -262,7 +270,7 @@ class Numerai(object):
 
 
 
-    def fit_tune(self, nCores=-1, stageNumber=1, neuralNetworkCompiler=False, evaluate=True, interaction=None):
+    def training(self, nCores=-1, stageNumber=1, neuralNetworkCompiler=False, evaluate=True, interaction=None):
 
     # Loading data:
         self.load_data(self.week, stageNumber, evaluate)
@@ -311,7 +319,7 @@ class Numerai(object):
                         pass
 
                 # Tuning
-                    gscv = GridSearchCV(model, parameters, scoring = score, n_jobs = nCores)
+                    gscv = GridSearchCV(model, parameters, scoring=score, n_jobs=nCores)
                     gscv.fit(inter[1], self.Ytrain[1])                                                            ## FIRST STAGE TRAINING ON XTRAIN1
 
                 # Saving best predictions
@@ -369,7 +377,7 @@ class Numerai(object):
                             pass
 
                     # Tuning
-                        gscv = GridSearchCV(model, parameters, scoring = score, n_jobs = nCores)
+                        gscv = GridSearchCV(model, parameters, scoring=score, n_jobs=nCores)
                         gscv.fit(inter[2], self.Ytrain[2])                                                        ## SECOND STAGE TRAINING ON FIRST STAGE PREDICTION OF XTRAIN2
                                                                                                                   
                     # Saving best predictions
@@ -386,7 +394,7 @@ class Numerai(object):
 
             print('Second stage running time {}'.format(diff(datetime.now(), time1)))
 
-    # Compilation
+    # For compilation
 
         if stageNumber == 1:
             self.compilation_data = firstStagePrediction
@@ -418,7 +426,7 @@ class Numerai(object):
                     print('\n\n---------------------------------------------')
                     print('>> Processing compilation [{}]\n'.format(name))
 
-                    gscv = GridSearchCV(model, parameters, scoring = score, n_jobs = nCores)
+                    gscv = GridSearchCV(model, parameters, scoring=score, n_jobs=nCores)
                     gscv.fit(self.compilation_data[self.datasetToUse], self.Ytrain[self.datasetToUse])                                       ## COMPILATION TRAINING ON SECOND STAGE PREDICTION OF XTRAIN3
                                                                                                                               ## IF THERE IS TWO STAGES, ELSE ON XTRAIN2
                     # Final prediction
@@ -433,7 +441,8 @@ class Numerai(object):
                     (log_loss(self.Ytrain['valid'], self.finalPrediction['valid']['final_prediction'])))
 
 
-    def neuralNetworkCompiler(self, learningRate=0.0001, batch=64, epoch=2, cvNumber=1, displayStep=10000, evaluate=True, useGPU=False):
+
+    def compile(self, neuralNetworkCompiler=False, learningRate=0.0001, batch=64, epoch=2, cvNumber=1, displayStep=10000, evaluate=True, useGPU=False):
 
         print('\n\n---------------------------------------------')
         print('>> Processing compilation [Neural Network]\n')

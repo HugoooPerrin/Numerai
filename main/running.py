@@ -27,39 +27,37 @@ from numerai import Numerai
 from architecture import models, nCores
 
 
-#=========================================================================================================
-#================================ 1. CLASS
+if __name__ == '__main__':
+
+    #=========================================================================================================
+    #================================ 1. CLASS
 
 
-stacking = Numerai(week=109)
+    stacking = Numerai(week=110)
 
 
-#=========================================================================================================
-#================================ 2. FEATURE ENGINEERING
+    #=========================================================================================================
+    #================================ 2. FEATURE ENGINEERING
 
 
-# metafeature = ['variance', 'mean', 'distance']
-# stages = [2, 0, 2]
-# stacking.add_metafeature(metafeature, stages)
+    # metafeature = ['variance', 'mean', 'distance']
+    # stages = [2, 0, 2]
+    # stacking.add_metafeature(metafeature, stages)
 
 
-#=========================================================================================================
-#================================ 3. TRAINING MODEL
+    #=========================================================================================================
+    #================================ 3. TRAINING MODEL
 
 
-###### MACHINE LEARNING
-stacking.add_model(models)
-stacking.fit_tune(nCores, neuralNetworkCompiler=False, evaluate=True, interaction=None)
+    stacking.add_model(models)
+    stacking.training(nCores, stageNumber=1, neuralNetworkCompiler=False, evaluate=True)
+    # stacking.compile()
 
 
-###### DEEP LEARNING
-# stacking.neuralNetworkCompiler(learningRate=0.0001, batch=64, epoch=2, cvNumber=2, displayStep=10000, evaluate=True, useGPU=True)
+    #=========================================================================================================
+    #================================ 4. PREDICTION
 
 
-#=========================================================================================================
-#================================ 4. PREDICTION
-
-
-# stacking.submit(nCores=-1, submissionNumber=2, week=109)
+    # stacking.submit(nCores=-1, submissionNumber=1, week=110)
 
 
