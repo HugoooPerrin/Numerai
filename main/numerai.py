@@ -71,7 +71,8 @@ class Numerai(object):
         self.nFeatures = []
         self.stage = []
 
-        self.notYetNN = True
+        self.notYetNN_comp = True
+        self.notYetNN_train = True
 
 
 
@@ -264,12 +265,141 @@ class Numerai(object):
 
 
 
-    def add_neuralnetwork(self, stage):
-        pass
+    def trainingNN(self, architecture, learningRate=0.0001, batch=64, epoch=5, 
+                   cvNumber=1, displayStep=1000, evaluate=True, useGPU=True):
+        
+    # Data
+        self.firstStagePrediction = {}
+        for dataset in self.Xtrain:
+            self.firstStagePrediction[dataset] = pd.DataFrame()
+            
+        print('\n---------------------------------------------')
+        print('>> Processing Neural Network ------\n')
+
+        if self.notYetNN_train:
+            XtrainNNData = {}
+            YtrainNNData = {}
+            for dataset in self.Xtrain:
+                trainNNData[dataset] = np.array(self.Xtrain[dataset])
+                if dataset != 'real_data':
+                    YtrainNNData[dataset] = np.array(self.Ytrain[dataset].values)
+                    YtrainNNData[dataset] = self.Ytrain[dataset].reshape(self.Ytrain[dataset].shape[0], 1)
+
+            trainNNData[1] = np.concatenate((self.Xtrain[1], self.Xtrain['test']), axis=0)
+            YtrainNNData[1] = np.concatenate((self.Ytrain[1], self.Ytrain['test']), axis=0)
+
+            del trainNNData['test'], YtrainNNData['test']
+            self.notYetNN_train = False
+
+        if evaluate:
+        # Tuning hyperparameter
+            cvScore = 0
+
+            time = datetime.now()
+
+            for i in range(cvNumber):
+                print('\nLoop number {}'.format(i+1))
+
+                Xtrain, Xvalid, Ytrain, Yvalid = train_test_split(trainNNData[1], YtrainNNData[1], test_size=0.25)
+
+            # Tensor
+
+                train_dataset = torch.utils.data.TensorDataset(torch.FloatTensor(Xtrain), 
+                                                               torch.FloatTensor(Ytrain))
+
+                validation_dataset = torch.utils.data.TensorDataset(torch.FloatTensor(Xvalid), 
+                                                                    torch.FloatTensor(Yvalid))
+
+                valid_dataset = torch.FloatTensor(self.compilation_data['valid'])
+
+            # Loader
+
+                train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                                           batch_size=batch,
+                                                           shuffle=True,
+                                                           num_workers=8)
+
+                validation_loader = torch.utils.data.DataLoader(dataset=validation_dataset,
+                                                                batch_size=batch,
+                                                                shuffle=False, 
+                                                                num_workers=8)
+
+                valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset,
+                                                           batch_size=batch,
+                                                           shuffle=False,
+                                                           num_workers=8)
+            # Model
+                net = architectureNN
+
+            # Loss function
+                criterion = nn.BCEWithLogitsLoss()
+                
+            # Optimization algorithm
+                optimizer = optim.RMSprop(net.parameters(), lr=learningRate, alpha=0.99, eps=1e-08, 
+                                          weight_decay=0, momentum=0.9)
+
+            # Training model
+                trainNN(epoch, net, train_loader, optimizer, criterion, display_step=displayStep, 
+                        valid_loader=validation_loader, use_GPU=useGPU)
+
+            # Predicting
+                validPrediction = predictNN(net, valid_loader, use_GPU=useGPU)
+                
+            # Performance measuring
+                score = log_loss(self.Ytrain['valid'], validPrediction)
+
+                cvScore += score*(1/cvNumber)
+
+                print("\nIntermediate score: %.5f" % score)
+
+            print("\nValid log loss: %.5f\n" % cvScore)
+            print('\nRunning time {}'.format(diff(datetime.now(), time)))
+
+        else:
+            time = datetime.now()
+
+        # Tensor
+            train_dataset = torch.utils.data.TensorDataset(torch.FloatTensor(trainNNData[1]), 
+                                                           torch.FloatTensor(YtrainNNData[1]))
+
+            tensor = {}
+            for dataset in self.Xtrain: 
+                tensor[dataset] = torch.FloatTensor(self.trainNNData[dataset])
+
+        # Loader
+            train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                                       batch_size=batch,
+                                                       shuffle=True,
+                                                       num_workers=8)
+            loader = {}
+            for dataset in self.Xtrain: 
+                loader[dataset] = torch.utils.data.DataLoader(dataset=tensor[dataset],
+                                                              batch_size=batch,
+                                                              shuffle=False,
+                                                              num_workers=8)
+        # Model
+            net = architectureNN
+
+        # Loss function
+            criterion = nn.BCEWithLogitsLoss()
+            
+        # Optimization algorithm
+            optimizer = optim.RMSprop(net.parameters(), lr=learningRate, alpha=0.99, eps=1e-08, 
+                                      weight_decay=0, momentum=0.9)
+
+        # Training model
+            trainNN(num_epoch, net, train_loader, optimizer, criterion, display_step=displayStep, 
+                    valid_loader=None, use_GPU=useGPU)
+
+        # Predicting
+            for dataset in self.Xtrain: 
+                self.firstStagePrediction[dataset] = predictNN(net, loader[dataset], use_GPU=useGPU)
+
+            print('\nRunning time {}'.format(diff(datetime.now(), time)))
 
 
 
-    def training(self, nCores=-1, stageNumber=1, neuralNetworkCompiler=False, evaluate=True, interaction=None):
+    def training(self, nCores=-1, stageNumber=1, evaluate=True, interaction=None):
 
     # Loading data:
         self.load_data(self.week, stageNumber, evaluate)
@@ -287,9 +417,13 @@ class Numerai(object):
         features = [name for name in self.Xtrain[1].columns]
         time1 = datetime.now()
 
-        firstStagePrediction = {}
-        for dataset in self.Xtrain:
-            firstStagePrediction[dataset] = pd.DataFrame()
+        if self.notYetNN_train:
+            firstStagePrediction = {}
+            for dataset in self.Xtrain:
+                firstStagePrediction[dataset] = pd.DataFrame()
+        else:
+            firstStagePrediction = self.firstStagePrediction
+            del self.firstStagePrediction
 
         for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.baggingSteps, self.nFeatures, self.stage):
             
@@ -415,7 +549,8 @@ class Numerai(object):
 
 
 
-    def compile(self, nCores=-1, neuralNetworkCompiler=False, architectureNN=None,evaluate=True, learningRate=0.0001, batch=64, epoch=2, cvNumber=1, displayStep=10000, useGPU=False):
+    def compile(self, nCores=-1, neuralNetworkCompiler=False, architectureNN=None,evaluate=True, learningRate=0.0001, 
+                batch=64, epoch=2, cvNumber=1, displayStep=10000, useGPU=False):
 
     # Defining score
 
@@ -432,7 +567,7 @@ class Numerai(object):
             print('\n---------------------------------------------')
             print('>> Processing compilation [Neural Network]\n')
 
-            if self.notYetNN:
+            if self.notYetNN_comp:
                 for dataset in self.Xtrain:
                     self.compilation_data[dataset] = np.array(self.compilation_data[dataset])
                     if dataset != 'real_data':
@@ -489,10 +624,12 @@ class Numerai(object):
                     criterion = nn.BCEWithLogitsLoss()
                     
                 # Optimization algorithm
-                    optimizer = optim.RMSprop(net.parameters(), lr=learningRate, alpha=0.99, eps=1e-08, weight_decay=0, momentum=0.9)
+                    optimizer = optim.RMSprop(net.parameters(), lr=learningRate, alpha=0.99, eps=1e-08, 
+                                              weight_decay=0, momentum=0.9)
 
                 # Training model
-                    trainNN(epoch, net, train_loader, optimizer, criterion, display_step=displayStep, valid_loader=validation_loader, use_GPU=useGPU)
+                    trainNN(epoch, net, train_loader, optimizer, criterion, display_step=displayStep, 
+                            valid_loader=validation_loader, use_GPU=useGPU)
 
                 # Predicting
                     validPrediction = predictNN(net, valid_loader, use_GPU=useGPU)
@@ -533,10 +670,12 @@ class Numerai(object):
                 criterion = nn.BCEWithLogitsLoss()
                 
             # Optimization algorithm
-                optimizer = optim.RMSprop(net.parameters(), lr=learningRate, alpha=0.99, eps=1e-08, weight_decay=0, momentum=0.9)
+                optimizer = optim.RMSprop(net.parameters(), lr=learningRate, alpha=0.99, eps=1e-08, 
+                                          weight_decay=0, momentum=0.9)
 
             # Training model
-                trainNN(num_epoch, net, train_loader, optimizer, criterion, display_step=displayStep, valid_loader=None, use_GPU=useGPU)
+                trainNN(num_epoch, net, train_loader, optimizer, criterion, display_step=displayStep, 
+                        valid_loader=None, use_GPU=useGPU)
 
             # Predicting
                 self.finalPrediction['real_data'] = predictNN(net, real_loader, use_GPU=useGPU)

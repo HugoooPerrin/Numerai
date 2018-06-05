@@ -55,28 +55,33 @@ if __name__ == '__main__':
     #=========================================================================================================
     #================================ 3. TRAINING MODEL
 
-
-    class NN(nn.Module):
-
-        def __init__(self):
-            super(NN, self).__init__()
-
-            self.linear = nn.Sequential(
-                nn.Linear(38, 10),
-                nn.ReLU(),
-                nn.Dropout(0.5),
-                nn.Linear(10, 1))
-            
-        def forward(self, x):
-            out = self.linear(x)
-            return out
-
     stacking.add_model(models)
-    stacking.training(nCores, stageNumber=1, neuralNetworkCompiler=False, evaluate=True)
+
+    # class NN(nn.Module):
+
+    #     def __init__(self):
+    #         super(NN, self).__init__()
+
+    #         self.linear = nn.Sequential(
+    #             nn.Linear(38, 10),
+    #             nn.ReLU(),
+    #             nn.Dropout(0.5),
+    #             nn.Linear(10, 1))
+            
+    #     def forward(self, x):
+    #         out = self.linear(x)
+    #         return out
+
+    # stacking.trainingNN(architecture=NN(), learningRate=0.0001, batch=64, epoch=5, 
+    #                     cvNumber=1, displayStep=1000, evaluate=True, useGPU=True)
+
+    stacking.training(nCores, stageNumber=1, evaluate=True)
+
     stacking.compile(nCores, neuralNetworkCompiler=False, evaluate=True)
+
     # stacking.compile(nCores, neuralNetworkCompiler=True, architecture=NN(), 
     #                  learningRate=0.0001, batch=64, epoch=2, cvNumber=1, 
-    #                  displayStep=1000, evaluate=False, useGPU=False)
+    #                  displayStep=1000, evaluate=False, useGPU=True)
 
 
     #=========================================================================================================
