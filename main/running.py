@@ -72,16 +72,17 @@ if __name__ == '__main__':
             return out
 
     stacking.add_model(models)
-    stacking.training(nCores, stageNumber=1, neuralNetworkCompiler=False, evaluate=False)
-
-    stacking.compile(nCores, neuralNetworkCompiler=False)
-    # stacking.compile(nCores, neuralNetworkCompiler=True, architecture=NN(), learningRate=0.0001, batch=64, epoch=2, cvNumber=1, displayStep=1000, evaluate=False, useGPU=False)
+    stacking.training(nCores, stageNumber=1, neuralNetworkCompiler=False, evaluate=True)
+    stacking.compile(nCores, neuralNetworkCompiler=False, evaluate=True)
+    # stacking.compile(nCores, neuralNetworkCompiler=True, architecture=NN(), 
+    #                  learningRate=0.0001, batch=64, epoch=2, cvNumber=1, 
+    #                  displayStep=1000, evaluate=False, useGPU=False)
 
 
     #=========================================================================================================
     #================================ 4. PREDICTION
 
 
-    stacking.submit(submissionNumber=2, week=110)
+    # stacking.submit(submissionNumber=2, week=110)
 
 

@@ -329,7 +329,8 @@ class Numerai(object):
 
                     print('done in {}'.format(diff(datetime.now(), time2)))
                     if evaluate:
-                        print('log loss : {}\n'.format(log_loss(self.Ytrain['test'], firstStagePrediction['test']['{}_prediction_{}'.format(name,step+1)])))
+                        print('log loss : %.5f\n' %
+                            (log_loss(self.Ytrain['test'], firstStagePrediction['test']['{}_prediction_{}'.format(name,step+1)])))
 
         del self.Xtrain[1], self.Ytrain[1]
 
@@ -387,7 +388,8 @@ class Numerai(object):
 
                         print('done in {}'.format(diff(datetime.now(), time2)))
                         if evaluate:
-                            print('log loss : {}\n'.format(log_loss(self.Ytrain['test'], secondStagePrediction['test']['{}_prediction_{}'.format(name,step+1)])))
+                            print('log loss : %.5f\n' %
+                                (log_loss(self.Ytrain['test'], secondStagePrediction['test']['{}_prediction_{}'.format(name,step+1)])))
 
             del self.Xtrain[2], self.Ytrain[2]
 
@@ -426,7 +428,8 @@ class Numerai(object):
             self.finalPrediction[dataset] = pd.DataFrame()
 
         if neuralNetworkCompiler:
-            print('\n\n---------------------------------------------')
+            
+            print('\n---------------------------------------------')
             print('>> Processing compilation [Neural Network]\n')
 
             if self.notYetNN:
@@ -499,9 +502,9 @@ class Numerai(object):
 
                     cvScore += score*(1/cvNumber)
 
-                    print("\nIntermediate score: %.6f" % score)
+                    print("\nIntermediate score: %.5f" % score)
 
-                print("\nFinal valid log loss: %.6f\n" % cvScore)
+                print("\nFinal valid log loss: %.5f\n" % cvScore)
                 print('\nTotal running time {}'.format(diff(datetime.now(), time)))
 
             else:
@@ -545,7 +548,7 @@ class Numerai(object):
                 
                 if stage == self.datasetToUse:                                                                                     ## There is normally only one model that fits here !!!!
 
-                    print('\n\n---------------------------------------------')
+                    print('\n---------------------------------------------')
                     print('>> Processing compilation [{}]\n'.format(name))
 
                     gscv = GridSearchCV(model, parameters, scoring=score, n_jobs=nCores)
