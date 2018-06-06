@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
 
     stacking = Numerai(week=110)
-    nCores = -1
+    nCores = 4
 
 
     #=========================================================================================================
@@ -76,9 +76,9 @@ if __name__ == '__main__':
     # stacking.trainingNN(architecture=NN(), learningRate=0.0001, batch=64, epoch=5, 
     #                     cvNumber=1, displayStep=1000, evaluate=True, useGPU=True)
 
-    stacking.training(nCores, stageNumber=1, evaluate=True)
+    stacking.training(nCores, stageNumber=1, evaluate=False)
 
-    stacking.compile(nCores, neuralNetworkCompiler=False, evaluate=True)
+    stacking.compile(nCores, neuralNetworkCompiler=False, evaluate=False)
 
     # stacking.compile(nCores, neuralNetworkCompiler=True, architecture=NN(), 
     #                  learningRate=0.0001, batch=64, epoch=2, cvNumber=1, 
@@ -89,6 +89,6 @@ if __name__ == '__main__':
     #================================ 4. PREDICTION
 
 
-    # stacking.submit(submissionNumber=2, week=110)
+    stacking.submit(submissionNumber=2, week=110)
 
 
