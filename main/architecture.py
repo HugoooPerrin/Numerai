@@ -6,7 +6,7 @@
 
 
 from lightgbm import LGBMClassifier
-# from xgboost import XGBClassifier
+from xgboost import XGBClassifier
 from catboost import CatBoostClassifier
 
 from sklearn.ensemble import ExtraTreesClassifier
@@ -38,12 +38,12 @@ models = {'ExtraTrees1':[1, 5, 15, ExtraTreesClassifier(n_jobs = 1,
                                      'min_samples_leaf': [250, 1000]}],
 
 
-         # 'XGBoost':     [0, 1, 50, XGBClassifier(max_depth = 3, 
-         #                                         n_estimators = 30,
-         #                                         nthread = 1),
+         'XGBoost':     [0, 1, 50, XGBClassifier(max_depth = 3, 
+                                                 n_estimators = 30,
+                                                 nthread = 1),
  
-         #                            {'subsample': [0.5, 0.75, 1],                                    
-         #                             'learning_rate': [0.01, 0.1, 0.5, 1]}],
+                                    {'subsample': [0.5, 0.75, 1],                                    
+                                     'learning_rate': [0.01, 0.1, 0.5, 1]}],
 
 
          'SGDC':        [0, 5, 15, SGDClassifier(loss = 'log',

@@ -79,11 +79,11 @@ class Numerai(object):
     def load_data(self, week, stageNumber, test):
         print('\n---------------------------------------------')
         print('>> Loading data', end='...')
-        # Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(week))
-        # Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(week))
+        Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(week))
+        Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(week))
  
-        Xtrain = pd.read_csv("../../Data/numerai_training_data.csv")
-        Xvalid = pd.read_csv("../../Data/numerai_tournament_data.csv")
+        # Xtrain = pd.read_csv("../../Data/numerai_training_data.csv")
+        # Xvalid = pd.read_csv("../../Data/numerai_tournament_data.csv")
 
         real_data = Xvalid.copy(True)
         self.ids = Xvalid['id']
