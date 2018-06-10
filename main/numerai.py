@@ -67,6 +67,7 @@ class Numerai(object):
 
         self.week = week
         self.type = name
+        self.kmeanStage = False
 
         self.modelNames = []
         self.models = []
@@ -207,34 +208,6 @@ class Numerai(object):
 
 
 
-    def kmeansTrick(self, k, stage=1, interaction=False):
-
-        self.kmeanStage = stage
-        self.kmeansInteraction = interaction
-
-    # Data
-        if self.evaluate:
-            if self.stageNumber == 1:
-                data = pd.concat([self.Xtrain[1], self.Xtrain[2]])
-            elif self.stageNumber == 2:
-                data = pd.concat([self.Xtrain[1], self.Xtrain[2], self.Xtrain[3]])
-        else:
-            if self.stageNumber == 1:
-                data = pd.concat([self.Xtrain[1], self.Xtrain[2], self.Xtrain['test']])
-            elif self.stageNumber == 2:
-                data = pd.concat([self.Xtrain[1], self.Xtrain[2], self.Xtrain[3], self.Xtrain['test']])
-
-    # Unsupervised learning
-        model = cluster.KMeans(n_clusters=k, precompute_distances=False)
-        model.fit(data)
-
-    # Feature engineering
-        self.kmeanDist = {}
-        for dataset in self.Xtrain:
-            self.kmeanDist[dataset] = model.transform(self.Xtrain[dataset])
-
-
-
     def _add_model(self, models): 
 
         """
@@ -247,6 +220,43 @@ class Numerai(object):
             self.stage.append(models[name][0])
             self.models.append(models[name][3])
             self.parameters.append(models[name][4])
+
+
+
+    def kmeansTrick(self, k, interaction=False):
+
+
+        print('\n---------------------------------------------')
+        print('>> Processing Kmeans ------\n')
+
+        self.kmeanStage = True
+        self.kmeansInteraction = interaction
+
+    # Data
+        if not self.evaluate:
+            if self.stageNumber == 1:
+                data = pd.concat([self.Xtrain[1], self.Xtrain[2]])
+            elif self.stageNumber == 2:
+                data = pd.concat([self.Xtrain[1], self.Xtrain[2], self.Xtrain[3]])
+        else:
+            if self.stageNumber == 1:
+                data = pd.concat([self.Xtrain[1], self.Xtrain[2], self.Xtrain['test']])
+            elif self.stageNumber == 2:
+                data = pd.concat([self.Xtrain[1], self.Xtrain[2], self.Xtrain[3], self.Xtrain['test']])
+
+    # Unsupervised learning
+        print('Fitting model', end='...')
+        model = cluster.KMeans(n_clusters=k, precompute_distances=False)
+        model.fit(data)
+        print('done')
+
+    # Feature engineering
+        print('Generating kmeans features', end='...')
+        self.kmeanDist = {}
+        for dataset in self.Xtrain:
+            self.kmeanDist[dataset] = model.transform(self.Xtrain[dataset])
+            self.kmeanDist[dataset] = pd.DataFrame(self.kmeanDist[dataset], columns=['kmeans{}'.format(i) for i in range(k)])
+        print('done')
 
 
 
@@ -266,7 +276,12 @@ class Numerai(object):
         XtrainNNData = {}
         YtrainNNData = {}
         for dataset in self.Xtrain:
-            XtrainNNData[dataset] = np.array(self.Xtrain[dataset])
+            if self.kmeanStage:
+                XtrainNNData[dataset] = np.array(pd.concat([self.Xtrain[dataset].reset_index(drop=True), 
+                                                            self.kmeanDist[dataset].reset_index(drop=True)], axis=1))
+            else:
+                XtrainNNData[dataset] = np.array(self.Xtrain[dataset])
+
             if dataset != 'real_data':
                 YtrainNNData[dataset] = np.array(self.Ytrain[dataset].values)
                 YtrainNNData[dataset] = YtrainNNData[dataset].reshape(YtrainNNData[dataset].shape[0], 1)
@@ -430,17 +445,15 @@ class Numerai(object):
                         inter[dataset] = self.Xtrain[dataset][features[:nFeatures]]
 
                 # Adding metafeatures
-                    try:
-                        if self.kmeanStage == 1:
-                            for dataset in self.Xtrain:
-                            inter[dataset] = pd.concat([inter[dataset], self.kmeanDist[dataset]], axis=1)
-                        else:
-                            pass
-                    except:
+                    if self.kmeanStage:
+                        for dataset in self.Xtrain:
+                            inter[dataset] = pd.concat([inter[dataset].reset_index(drop=True), 
+                                                        self.kmeanDist[dataset].reset_index(drop=True)], axis=1)
+                    else:
                         pass
 
                 # Tuning
-                    gscv = GridSearchCV(model, parameters, scoring=score, n_jobs=nCores, cv=5)
+                    gscv = GridSearchCV(model, parameters, scoring=score, n_jobs=nCores, cv=4)
                     gscv.fit(inter[1], self.Ytrain[1])                                                            ## FIRST STAGE TRAINING ON XTRAIN1
 
                 # Saving best predictions
@@ -454,7 +467,7 @@ class Numerai(object):
                         print('log loss : %.5f\n' %
                             (log_loss(self.Ytrain['test'], firstStagePrediction['test']['{}_prediction_{}'.format(name,step+1)])))
 
-        del self.Xtrain[1], self.Ytrain[1]
+        del self.Xtrain[1], self.Ytrain[1], firstStagePrediction[1]
 
         print('\nFirst stage running time {}'.format(diff(datetime.now(), time1)))
 
@@ -490,13 +503,11 @@ class Numerai(object):
                             inter[dataset] = firstStagePrediction[dataset][features[:nFeatures]]
 
                     # Adding metafeatures
-                    try:
-                        if self.kmeanStage == 2:
-                            for dataset in self.Xtrain:
-                            inter[dataset] = pd.concat([inter[dataset], self.kmeanDist[dataset]], axis=1)
-                        else:
-                            pass
-                    except:
+                    if self.kmeanStage:
+                        for dataset in self.Xtrain:
+                            inter[dataset] = pd.concat([inter[dataset].reset_index(drop=True), 
+                                                        self.kmeanDist[dataset].reset_index(drop=True)], axis=1)
+                    else:
                         pass
 
                     # Tuning
@@ -514,7 +525,7 @@ class Numerai(object):
                             print('log loss : %.5f\n' %
                                 (log_loss(self.Ytrain['test'], secondStagePrediction['test']['{}_prediction_{}'.format(name,step+1)])))
 
-            del self.Xtrain[2], self.Ytrain[2]
+            del self.Xtrain[2], self.Ytrain[2], firstStagePrediction, secondStagePrediction[1], secondStagePrediction[2]
 
             print('Second stage running time {}'.format(diff(datetime.now(), time1)))
 
@@ -528,13 +539,11 @@ class Numerai(object):
             self.datasetToUse = 3
 
         # Adding metafeatures
-        try:
-            if self.kmeanStage == self.datasetToUse:
-                for dataset in self.Xtrain:
-                self.compilation_data[dataset] = pd.concat([self.compilation_data[dataset], self.kmeanDist[dataset]], axis=1)
-            else:
-                pass
-        except:
+        if self.kmeanStage:
+            for dataset in self.Xtrain:
+                self.compilation_data[dataset] = pd.concat([self.compilation_data[dataset].reset_index(drop=True), 
+                                                            self.kmeanDist[dataset].reset_index(drop=True)], axis=1)
+        else:
             pass
 
 

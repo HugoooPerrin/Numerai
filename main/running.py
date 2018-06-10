@@ -7,7 +7,6 @@ Running algorithm to search best fitting model
 
 
 Next steps:
-    - NN architecture more flexible
     - Try meta features
     - Feature interaction / polynomial
     - Using era ?
@@ -22,6 +21,9 @@ Next steps:
 
 # Class
 from numerai import Numerai
+
+# Architecture
+from architecture import models
 
 
 try:
@@ -38,53 +40,78 @@ if __name__ == '__main__':
     #================================ 1. CLASS
 
 
-    stacking = Numerai(week=111)
-    nCores = -1
+    stacking = Numerai(week=111, name='bernie')
+
+    # Loading data:
+    stacking.load_data(stageNumber=1, evaluate=False)
 
 
     #=========================================================================================================
     #================================ 2. FEATURE ENGINEERING
 
 
-    # metafeature = ['variance', 'mean', 'distance']
-    # stages = [2, 0, 2]
-    # stacking.add_metafeature(metafeature, stages)
+    stacking.kmeansTrick(k=5, interaction=False)
 
 
     #=========================================================================================================
     #================================ 3. TRAINING MODEL
 
-    stacking.add_model(models)
 
+    ## DEEP LEARNING
     # class NN(nn.Module):
 
     #     def __init__(self):
     #         super(NN, self).__init__()
 
     #         self.linear = nn.Sequential(
-    #             nn.Linear(38, 10),
+    #             nn.Linear(55, 25),
     #             nn.ReLU(),
     #             nn.Dropout(0.5),
-    #             nn.Linear(10, 1))
-            
+    #             nn.Linear(25, 1))
+
     #     def forward(self, x):
     #         out = self.linear(x)
     #         return out
+        
+    # stacking.trainingNN(architecture=NN(), learningRate=0.00003, batch=64, epoch=6,
+    #                        cvNumber=3, displayStep=1000, useGPU=True, evaluate=False)
 
-    # stacking.trainingNN(architecture=NN(), learningRate=0.0001, batch=64, epoch=5, 
-    #                     cvNumber=1, displayStep=1000, evaluate=True, useGPU=True)
 
-    stacking.training(nCores, stageNumber=1, evaluate=False)
+    ## MACHINE LEARNING
+    nCores = -1
 
-    stacking.compile(nCores, neuralNetworkCompiler=False, evaluate=False)
-
-    # stacking.compile(nCores, neuralNetworkCompiler=True, architecture=NN(), 
-    #                  learningRate=0.0001, batch=64, epoch=2, cvNumber=1, 
-    #                  displayStep=1000, evaluate=False, useGPU=True)
+    stacking.training(nCores, models)
 
 
     #=========================================================================================================
-    #================================ 4. PREDICTION
+    #================================ 4. COMPILATION
+
+    ## MACHINE LEARNING
+    stacking.compile(nCores, neuralNetworkCompiler=False)
+
+
+    ## DEEP LEARNING
+    # class NN(nn.Module):
+
+    # def __init__(self):
+    #     super(NN, self).__init__()
+
+    #     self.linear = nn.Sequential(
+    #         nn.Linear(3, 3),
+    #         nn.ReLU(),
+    #         nn.Dropout(0.3),
+    #         nn.Linear(3, 1))
+
+    # def forward(self, x):
+    #     out = self.linear(x)
+    #     return out
+
+    # stacking.compile(nCores, neuralNetworkCompiler=True, architectureNN=NN(), 
+    #                  learningRate=0.000001, batch=32, epoch=5, cvNumber=1, 
+    #                  displayStep=2000, useGPU=True)
+
+    #=========================================================================================================
+    #================================ 5. PREDICTION
 
 
     stacking.submit(submissionNumber=1, week=111)
