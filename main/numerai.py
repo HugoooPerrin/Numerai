@@ -90,6 +90,7 @@ class Numerai(object):
         # Xvalid = pd.read_csv("../../Data/numerai_tournament_data.csv")
 
         self.evaluate = evaluate
+        self.stageNumber = stageNumber
 
         real_data = Xvalid.copy(True)
         self.ids = Xvalid['id']
@@ -144,12 +145,10 @@ class Numerai(object):
 
                 self.Xtrain = {1: Xtrain1,
                                2: Xtrain2,
-                               'valid': Xvalid,
                                'real_data': real_data}
 
                 self.Ytrain = {1: Ytrain1,
-                               2: Ytrain2,
-                               'valid': Yvalid}
+                               2: Ytrain2}
 
         elif stageNumber == 2:
             if self.evaluate:
@@ -200,27 +199,39 @@ class Numerai(object):
                 self.Xtrain = {1: Xtrain1,
                                2: Xtrain2,
                                3: Xtrain3,
-                               'valid': Xvalid,
                                'real_data': real_data}
 
                 self.Ytrain = {1: Ytrain1,
                                2: Ytrain2,
-                               3: Ytrain3,
-                               'valid': Yvalid}
+                               3: Ytrain3}
 
 
 
-    # def kmeansTrick(self, k, stage=1):
+    def kmeansTrick(self, k, stage=1, interaction=False):
 
-    # # Data
-    #     self.kmeanDist = {}
-    #     for dataset in self.Xtrain:
-    #         self.kmeanDist[dataset] = pd.DataFrame()
+        self.kmeanStage = stage
+        self.kmeansInteraction = interaction
 
-    #     data = pd.conca
+    # Data
+        if self.evaluate:
+            if self.stageNumber == 1:
+                data = pd.concat([self.Xtrain[1], self.Xtrain[2]])
+            elif self.stageNumber == 2:
+                data = pd.concat([self.Xtrain[1], self.Xtrain[2], self.Xtrain[3]])
+        else:
+            if self.stageNumber == 1:
+                data = pd.concat([self.Xtrain[1], self.Xtrain[2], self.Xtrain['test']])
+            elif self.stageNumber == 2:
+                data = pd.concat([self.Xtrain[1], self.Xtrain[2], self.Xtrain[3], self.Xtrain['test']])
 
-    # # Unsupervised learning
-    #     model = cluster.KMeans(n_clusters=k, precompute_distances=False).fit()
+    # Unsupervised learning
+        model = cluster.KMeans(n_clusters=k, precompute_distances=False)
+        model.fit(data)
+
+    # Feature engineering
+        self.kmeanDist = {}
+        for dataset in self.Xtrain:
+            self.kmeanDist[dataset] = model.transform(self.Xtrain[dataset])
 
 
 
@@ -260,8 +271,8 @@ class Numerai(object):
                 YtrainNNData[dataset] = np.array(self.Ytrain[dataset].values)
                 YtrainNNData[dataset] = YtrainNNData[dataset].reshape(YtrainNNData[dataset].shape[0], 1)
 
-        XtrainNNData[1] = np.concatenate((XtrainNNData[1], XtrainNNData['test']), axis=0)
-        YtrainNNData[1] = np.concatenate((YtrainNNData[1], YtrainNNData['test']), axis=0)
+        XtrainNNData['nn'] = np.concatenate((XtrainNNData[1], XtrainNNData['test']), axis=0)
+        YtrainNNData['nn'] = np.concatenate((YtrainNNData[1], YtrainNNData['test']), axis=0)
 
         if evaluate:
         # Tuning hyperparameter
@@ -272,7 +283,7 @@ class Numerai(object):
             for i in range(cvNumber):
                 print('\nLoop number {}'.format(i+1))
 
-                Xtrain, Xvalid, Ytrain, Yvalid = train_test_split(XtrainNNData[1], YtrainNNData[1], test_size=0.25)
+                Xtrain, Xvalid, Ytrain, Yvalid = train_test_split(XtrainNNData['nn'], YtrainNNData['nn'], test_size=0.25)
 
             # Tensor
 
@@ -300,6 +311,7 @@ class Numerai(object):
                                                            batch_size=batch,
                                                            shuffle=False,
                                                            num_workers=8)
+
             # Model
                 net = architecture
 
@@ -315,9 +327,11 @@ class Numerai(object):
                         valid_loader=validation_loader, use_GPU=useGPU)
 
             # Predicting
-                validPrediction = predictNN(net, valid_loader, use_GPU=useGPU)
+                for dataset in self.Xtrain: 
+                    self.firstStagePrediction[dataset]['neuralNetwork'] = predictNN(net, loader[dataset], use_GPU=useGPU).flatten()
                 
             # Performance measuring
+                validPrediction = predictNN(net, valid_loader, use_GPU=useGPU)
                 score = log_loss(self.Ytrain['valid'], validPrediction)
 
                 cvScore += score*(1/cvNumber)
@@ -330,7 +344,7 @@ class Numerai(object):
             time = datetime.now()
 
         # Tensor
-            train_dataset = torch.utils.data.TensorDataset(torch.FloatTensor(XtrainNNData[1]), 
+            train_dataset = torch.utils.data.TensorDataset(torch.FloatTensor(XtrainNNData[1]),
                                                            torch.FloatTensor(YtrainNNData[1]))
 
             tensor = {}
@@ -364,7 +378,7 @@ class Numerai(object):
 
         # Predicting
             for dataset in self.Xtrain: 
-                self.firstStagePrediction[dataset] = predictNN(net, loader[dataset], use_GPU=useGPU)
+                self.firstStagePrediction[dataset]['neuralNetwork'] = predictNN(net, loader[dataset], use_GPU=useGPU).flatten()
 
         del XtrainNNData, YtrainNNData
 
@@ -417,8 +431,9 @@ class Numerai(object):
 
                 # Adding metafeatures
                     try:
-                        if self.kmeansTrick == 1:
-                            pass
+                        if self.kmeanStage == 1:
+                            for dataset in self.Xtrain:
+                            inter[dataset] = pd.concat([inter[dataset], self.kmeanDist[dataset]], axis=1)
                         else:
                             pass
                     except:
@@ -476,8 +491,9 @@ class Numerai(object):
 
                     # Adding metafeatures
                     try:
-                        if self.kmeansTrick == 2:
-                            pass
+                        if self.kmeanStage == 2:
+                            for dataset in self.Xtrain:
+                            inter[dataset] = pd.concat([inter[dataset], self.kmeanDist[dataset]], axis=1)
                         else:
                             pass
                     except:
@@ -513,8 +529,9 @@ class Numerai(object):
 
         # Adding metafeatures
         try:
-            if self.kmeansTrick == self.datasetToUse:
-                pass
+            if self.kmeanStage == self.datasetToUse:
+                for dataset in self.Xtrain:
+                self.compilation_data[dataset] = pd.concat([self.compilation_data[dataset], self.kmeanDist[dataset]], axis=1)
             else:
                 pass
         except:
