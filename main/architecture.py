@@ -18,7 +18,7 @@ from sklearn.linear_model import SGDClassifier
 
 
 
-models = {'ExtraTrees1':[1, 5, 15, ExtraTreesClassifier(n_jobs = 1, 
+models = {'ExtraTrees1':[1, 5, 10, ExtraTreesClassifier(n_jobs = 1, 
                                                          criterion = 'entropy',
                                                          max_depth = 3,
                                                          bootstrap = True),
@@ -28,7 +28,7 @@ models = {'ExtraTrees1':[1, 5, 15, ExtraTreesClassifier(n_jobs = 1,
                                      'min_samples_leaf': [250, 1000]}],
 
 
-         'ExtraTrees2': [1, 5, 15, ExtraTreesClassifier(n_jobs = 1, 
+         'ExtraTrees2': [1, 5, 10, ExtraTreesClassifier(n_jobs = 1, 
                                                          criterion = 'gini',
                                                          max_depth = 3,
                                                          bootstrap = True),
@@ -57,7 +57,7 @@ models = {'ExtraTrees1':[1, 5, 15, ExtraTreesClassifier(n_jobs = 1,
                                      'l1_ratio': [0.001, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 1]}],
 
 
-         'LightGBM1':   [1, 3, 25, LGBMClassifier(objective = 'binary',
+         'LightGBM1':   [1, 5, 15, LGBMClassifier(objective = 'binary',
                                                    max_depth = 3,
                                                    verbose=-1,
                                                    n_jobs = 1), 
@@ -82,16 +82,17 @@ models = {'ExtraTrees1':[1, 5, 15, ExtraTreesClassifier(n_jobs = 1,
          'LightGBM3':   [2, 5, 5, LGBMClassifier(objective = 'binary',
                                                   max_depth = 3,
                                                   verbose=-1,
-                                                  n_jobs = 1), 
+                                                  n_jobs = 1),
 
                                     {'n_estimators': [25, 50, 100],                                  
                                      'min_child_samples': [100, 500],
                                      'reg_lambda': [0.001, 0.01, 0.1],
                                      'num_leaves': [8, 16, 32, 64]}],
 
-         'Catboost':    [0, 1, 50, CatBoostClassifier(loss_function='Logloss',
+         'Catboost':    [0, 2, 25, CatBoostClassifier(loss_function='Logloss',
                                                        verbose=False),
 
-                                    {'iterations': [2, 5, 10],
+                                    {'iterations': [2, 5],
                                      'learning_rate': [0.1, 1],
-                                     'depth': [2, 3, 5]}]}
+                                     'depth': [2, 3, 5],
+                                     'l2_leaf_reg': [0.001, 0.01, 0.1]}]}

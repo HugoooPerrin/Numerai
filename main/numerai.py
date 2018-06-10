@@ -27,6 +27,7 @@ from dateutil.relativedelta import relativedelta
 # Preprocessing
 from scipy.spatial.distance import euclidean
 from sklearn.decomposition import PCA
+from sklearn import cluster
 
 # Metrics
 from sklearn.metrics import make_scorer
@@ -51,6 +52,8 @@ def diff(t_a, t_b):
     t_diff = relativedelta(t_a, t_b)
     return '{h}h {m}m {s}s'.format(h=t_diff.hours, m=t_diff.minutes, s=t_diff.seconds)
 
+# Architecture
+from architecture import models
 
 #=========================================================================================================
 #================================ NUMERAI CLASS
@@ -60,9 +63,10 @@ class Numerai(object):
 
 
 
-    def __init__(self, week):
+    def __init__(self, week, name):
 
         self.week = week
+        self.type = name
 
         self.modelNames = []
         self.models = []
@@ -76,29 +80,31 @@ class Numerai(object):
 
 
 
-    def load_data(self, week, stageNumber, test):
+    def load_data(self, stageNumber, evaluate):
         print('\n---------------------------------------------')
         print('>> Loading data', end='...')
-        Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(week))
-        Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(week))
+        Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(self.week))
+        Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(self.week))
  
         # Xtrain = pd.read_csv("../../Data/numerai_training_data.csv")
         # Xvalid = pd.read_csv("../../Data/numerai_tournament_data.csv")
+
+        self.evaluate = evaluate
 
         real_data = Xvalid.copy(True)
         self.ids = Xvalid['id']
 
         Xvalid = Xvalid[Xvalid['data_type'] == 'validation']
 
-        Ytrain = Xtrain['target']
-        Yvalid = Xvalid['target']
+        Ytrain = Xtrain['target_{}'.format(self.type)]
+        Yvalid = Xvalid['target_{}'.format(self.type)]
 
-        Xtrain.drop(['id', 'era', 'data_type', 'target'], inplace = True, axis = 1)
-        Xvalid.drop(['id', 'era', 'data_type', 'target'], inplace = True, axis = 1)
-        real_data.drop(['id', 'era', 'data_type', 'target'], inplace = True, axis = 1)
+        Xtrain.drop(['id', 'era', 'data_type', 'target_bernie', 'target_charles', 'target_elizabeth', 'target_jordan', 'target_ken'], inplace = True, axis = 1)
+        Xvalid.drop(['id', 'era', 'data_type', 'target_bernie', 'target_charles', 'target_elizabeth', 'target_jordan', 'target_ken'], inplace = True, axis = 1)
+        real_data.drop(['id', 'era', 'data_type', 'target_bernie', 'target_charles', 'target_elizabeth', 'target_jordan', 'target_ken'], inplace = True, axis = 1)
 
         if stageNumber == 1:
-            if test:
+            if self.evaluate:
                 # Xtrain1 = 40%, Xtrain2 = 40%, Xtest = 20%
                 Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=0.6)
                 Xtrain2, Xtest, Ytrain2, Ytest = train_test_split(Xtrain2, Ytrain2, test_size=0.33)
@@ -146,7 +152,7 @@ class Numerai(object):
                                'valid': Yvalid}
 
         elif stageNumber == 2:
-            if test:
+            if self.evaluate:
                 # Xtrain1 = 30%, Xtrain2 = 30%, Xtrain3 = 30%, Xtest = 10%
                 Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=0.7)
                 Xtrain2, Xtrain3, Ytrain2, Ytrain3 = train_test_split(Xtrain2, Ytrain2, test_size=0.57)
@@ -204,53 +210,21 @@ class Numerai(object):
 
 
 
-    def add_metafeature(self, name, stage):
+    # def kmeansTrick(self, k, stage=1):
 
-        self.metafeature = {}
-        for dataset in self.Xtrain:
-            self.metafeature[dataset] = pd.DataFrame()
+    # # Data
+    #     self.kmeanDist = {}
+    #     for dataset in self.Xtrain:
+    #         self.kmeanDist[dataset] = pd.DataFrame()
 
-        self.metafeatureName = name
-        self.metafeatureStage = stage
+    #     data = pd.conca
 
-    ## Simple metafeature
-
-        if 'variance' in name:
-            for dataset in self.Xtrain:
-                self.metafeature[dataset]['variance'] = self.Xtrain[dataset].std(axis = 1)
-
-        if 'mean' in name:
-            for dataset in self.Xtrain:
-                self.metafeature[dataset]['mean'] = self.Xtrain[dataset].mean(axis = 1)
-
-        if 'distance' in name:
-            mean_indiv = pd.concat(self.Xtrain.values(), axis=0).mean(axis = 0)
-            for dataset in self.Xtrain:
-                self.metafeature[dataset]['distance'] = self.Xtrain[dataset].apply(lambda row: euclidean(row, mean_indiv), axis = 1)
-
-    ## Neural Network autoencoder
-
-        if 'autoencoder' in name:
-            pass
-
-    ## Mean encoding
-
-        if 'meanEncoding' in name:
-            pass
-
-    ## Mean encoding
-
-        if 'KNNencoding' in name:
-            pass
-
-    ## PCA
-
-        if 'PCA' in name:
-            pass
+    # # Unsupervised learning
+    #     model = cluster.KMeans(n_clusters=k, precompute_distances=False).fit()
 
 
 
-    def add_model(self, models): 
+    def _add_model(self, models): 
 
         """
         A model should be sklearn-friendly and have a "predict_proba" method
@@ -266,7 +240,9 @@ class Numerai(object):
 
 
     def trainingNN(self, architecture, learningRate=0.0001, batch=64, epoch=5, 
-                   cvNumber=1, displayStep=1000, evaluate=True, useGPU=True):
+                   cvNumber=1, displayStep=1000, useGPU=True, evaluate=True):
+
+        self.notYetNN_train = False
         
     # Data
         self.firstStagePrediction = {}
@@ -276,20 +252,16 @@ class Numerai(object):
         print('\n---------------------------------------------')
         print('>> Processing Neural Network ------\n')
 
-        if self.notYetNN_train:
-            XtrainNNData = {}
-            YtrainNNData = {}
-            for dataset in self.Xtrain:
-                trainNNData[dataset] = np.array(self.Xtrain[dataset])
-                if dataset != 'real_data':
-                    YtrainNNData[dataset] = np.array(self.Ytrain[dataset].values)
-                    YtrainNNData[dataset] = self.Ytrain[dataset].reshape(self.Ytrain[dataset].shape[0], 1)
+        XtrainNNData = {}
+        YtrainNNData = {}
+        for dataset in self.Xtrain:
+            XtrainNNData[dataset] = np.array(self.Xtrain[dataset])
+            if dataset != 'real_data':
+                YtrainNNData[dataset] = np.array(self.Ytrain[dataset].values)
+                YtrainNNData[dataset] = YtrainNNData[dataset].reshape(YtrainNNData[dataset].shape[0], 1)
 
-            trainNNData[1] = np.concatenate((self.Xtrain[1], self.Xtrain['test']), axis=0)
-            YtrainNNData[1] = np.concatenate((self.Ytrain[1], self.Ytrain['test']), axis=0)
-
-            del trainNNData['test'], YtrainNNData['test']
-            self.notYetNN_train = False
+        XtrainNNData[1] = np.concatenate((XtrainNNData[1], XtrainNNData['test']), axis=0)
+        YtrainNNData[1] = np.concatenate((YtrainNNData[1], YtrainNNData['test']), axis=0)
 
         if evaluate:
         # Tuning hyperparameter
@@ -300,7 +272,7 @@ class Numerai(object):
             for i in range(cvNumber):
                 print('\nLoop number {}'.format(i+1))
 
-                Xtrain, Xvalid, Ytrain, Yvalid = train_test_split(trainNNData[1], YtrainNNData[1], test_size=0.25)
+                Xtrain, Xvalid, Ytrain, Yvalid = train_test_split(XtrainNNData[1], YtrainNNData[1], test_size=0.25)
 
             # Tensor
 
@@ -310,7 +282,7 @@ class Numerai(object):
                 validation_dataset = torch.utils.data.TensorDataset(torch.FloatTensor(Xvalid), 
                                                                     torch.FloatTensor(Yvalid))
 
-                valid_dataset = torch.FloatTensor(self.compilation_data['valid'])
+                valid_dataset = torch.FloatTensor(XtrainNNData['valid'])
 
             # Loader
 
@@ -329,7 +301,7 @@ class Numerai(object):
                                                            shuffle=False,
                                                            num_workers=8)
             # Model
-                net = architectureNN
+                net = architecture
 
             # Loss function
                 criterion = nn.BCEWithLogitsLoss()
@@ -353,18 +325,17 @@ class Numerai(object):
                 print("\nIntermediate score: %.5f" % score)
 
             print("\nValid log loss: %.5f\n" % cvScore)
-            print('\nRunning time {}'.format(diff(datetime.now(), time)))
 
         else:
             time = datetime.now()
 
         # Tensor
-            train_dataset = torch.utils.data.TensorDataset(torch.FloatTensor(trainNNData[1]), 
+            train_dataset = torch.utils.data.TensorDataset(torch.FloatTensor(XtrainNNData[1]), 
                                                            torch.FloatTensor(YtrainNNData[1]))
 
             tensor = {}
             for dataset in self.Xtrain: 
-                tensor[dataset] = torch.FloatTensor(self.trainNNData[dataset])
+                tensor[dataset] = torch.FloatTensor(XtrainNNData[dataset])
 
         # Loader
             train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
@@ -378,7 +349,7 @@ class Numerai(object):
                                                               shuffle=False,
                                                               num_workers=8)
         # Model
-            net = architectureNN
+            net = architecture
 
         # Loss function
             criterion = nn.BCEWithLogitsLoss()
@@ -388,21 +359,23 @@ class Numerai(object):
                                       weight_decay=0, momentum=0.9)
 
         # Training model
-            trainNN(num_epoch, net, train_loader, optimizer, criterion, display_step=displayStep, 
+            trainNN(epoch, net, train_loader, optimizer, criterion, display_step=displayStep, 
                     valid_loader=None, use_GPU=useGPU)
 
         # Predicting
             for dataset in self.Xtrain: 
                 self.firstStagePrediction[dataset] = predictNN(net, loader[dataset], use_GPU=useGPU)
 
-            print('\nRunning time {}'.format(diff(datetime.now(), time)))
+        del XtrainNNData, YtrainNNData
+
+        print('\nRunning time {}'.format(diff(datetime.now(), time)))
 
 
 
-    def training(self, nCores=-1, stageNumber=1, evaluate=True, interaction=None):
+    def training(self, nCores=-1, models = models, stageNumber=1, interaction=None):
 
-    # Loading data:
-        self.load_data(self.week, stageNumber, evaluate)
+    # Loading models
+        self._add_model(models)
 
     # Defining score
 
@@ -444,15 +417,15 @@ class Numerai(object):
 
                 # Adding metafeatures
                     try:
-                        for feature, stage in zip(self.metafeatureName, self.metafeatureStage):
-                            if stage == 1:
-                                for dataset in self.Xtrain:
-                                    inter[dataset][feature] = self.metafeature[dataset][feature]
+                        if self.kmeansTrick == 1:
+                            pass
+                        else:
+                            pass
                     except:
                         pass
 
                 # Tuning
-                    gscv = GridSearchCV(model, parameters, scoring=score, n_jobs=nCores)
+                    gscv = GridSearchCV(model, parameters, scoring=score, n_jobs=nCores, cv=5)
                     gscv.fit(inter[1], self.Ytrain[1])                                                            ## FIRST STAGE TRAINING ON XTRAIN1
 
                 # Saving best predictions
@@ -462,7 +435,7 @@ class Numerai(object):
                     del inter
 
                     print('done in {}'.format(diff(datetime.now(), time2)))
-                    if evaluate:
+                    if self.evaluate:
                         print('log loss : %.5f\n' %
                             (log_loss(self.Ytrain['test'], firstStagePrediction['test']['{}_prediction_{}'.format(name,step+1)])))
 
@@ -502,16 +475,16 @@ class Numerai(object):
                             inter[dataset] = firstStagePrediction[dataset][features[:nFeatures]]
 
                     # Adding metafeatures
-                        try:
-                            for feature, stage in zip(self.metafeatureName, self.metafeatureStage):
-                                if stage == 2:
-                                    for dataset in self.Xtrain:
-                                        inter[dataset][feature] = self.metafeature[dataset][feature]
-                        except:
+                    try:
+                        if self.kmeansTrick == 2:
                             pass
+                        else:
+                            pass
+                    except:
+                        pass
 
                     # Tuning
-                        gscv = GridSearchCV(model, parameters, scoring=score, n_jobs=nCores)
+                        gscv = GridSearchCV(model, parameters, scoring=score, n_jobs=nCores, cv=5)
                         gscv.fit(inter[2], self.Ytrain[2])                                                        ## SECOND STAGE TRAINING ON FIRST STAGE PREDICTION OF XTRAIN2
                                                                                                                   
                     # Saving best predictions
@@ -521,7 +494,7 @@ class Numerai(object):
                         del inter
 
                         print('done in {}'.format(diff(datetime.now(), time2)))
-                        if evaluate:
+                        if self.evaluate:
                             print('log loss : %.5f\n' %
                                 (log_loss(self.Ytrain['test'], secondStagePrediction['test']['{}_prediction_{}'.format(name,step+1)])))
 
@@ -540,16 +513,16 @@ class Numerai(object):
 
         # Adding metafeatures
         try:
-            for feature, stage in zip(self.metafeatureName, self.metafeatureStage):
-                if stage == self.datasetToUse:
-                    for dataset in self.Xtrain:
-                        self.compilation_data[dataset][feature] = self.metafeature[dataset][feature]
+            if self.kmeansTrick == self.datasetToUse:
+                pass
+            else:
+                pass
         except:
             pass
 
 
 
-    def compile(self, nCores=-1, neuralNetworkCompiler=False, architectureNN=None,evaluate=True, learningRate=0.0001, 
+    def compile(self, nCores=-1, neuralNetworkCompiler=False, architecture=None, learningRate=0.0001, 
                 batch=64, epoch=2, cvNumber=1, displayStep=10000, useGPU=False):
 
     # Defining score
@@ -578,9 +551,9 @@ class Numerai(object):
                 self.Ytrain[self.datasetToUse] = np.concatenate((self.Ytrain[self.datasetToUse], self.Ytrain['test']), axis=0)
 
                 del self.compilation_data['test']
-                self.notYetNN = False
+                self.notYetNN_comp = False
 
-            if evaluate:
+            if self.evaluate:
             # Tuning hyperparameter
                 cvScore = 0
 
@@ -618,7 +591,7 @@ class Numerai(object):
                                                                shuffle=False,
                                                                num_workers=8)
                 # Model
-                    net = architectureNN
+                    net = architecture
 
                 # Loss function
                     criterion = nn.BCEWithLogitsLoss()
@@ -664,7 +637,7 @@ class Numerai(object):
                                                           shuffle=False,
                                                           num_workers=8)
             # Model
-                net = architectureNN
+                net = architecture
 
             # Loss function
                 criterion = nn.BCEWithLogitsLoss()
@@ -674,7 +647,7 @@ class Numerai(object):
                                           weight_decay=0, momentum=0.9)
 
             # Training model
-                trainNN(num_epoch, net, train_loader, optimizer, criterion, display_step=displayStep, 
+                trainNN(epoch, net, train_loader, optimizer, criterion, display_step=displayStep, 
                         valid_loader=None, use_GPU=useGPU)
 
             # Predicting
@@ -690,7 +663,7 @@ class Numerai(object):
                     print('\n---------------------------------------------')
                     print('>> Processing compilation [{}]\n'.format(name))
 
-                    gscv = GridSearchCV(model, parameters, scoring=score, n_jobs=nCores)
+                    gscv = GridSearchCV(model, parameters, scoring=score, n_jobs=nCores, cv=5)
                     gscv.fit(self.compilation_data[self.datasetToUse], self.Ytrain[self.datasetToUse])                        ## COMPILATION TRAINING ON SECOND STAGE PREDICTION OF XTRAIN3
                                                                                                                               ## IF THERE IS TWO STAGES, ELSE ON XTRAIN2
                     # Final prediction
@@ -698,7 +671,7 @@ class Numerai(object):
                         self.finalPrediction[dataset]['final_prediction'] = gscv.predict_proba(self.compilation_data[dataset])[:,1]
 
             print('\nCompilation running time {}'.format(diff(datetime.now(), time)))
-            if evaluate:
+            if self.evaluate:
                 print('\nFinal test log loss : %.5f' %
                     (log_loss(self.Ytrain['test'], self.finalPrediction['test']['final_prediction'])))                        
                 print('Final valid log loss : %.5f\n' %
@@ -708,14 +681,16 @@ class Numerai(object):
 
     def submit(self, submissionNumber, week):
 
-        submit = pd.DataFrame()
-        submit['id'] = self.ids
-        submit['probability'] = self.finalPrediction['real_data']
+        if not self.evaluate:
 
-    # Saving prediction
-        submit.to_csv('../../../Datasets/Numerai/w{0}/submission{1}.csv'.format(week, submissionNumber), index = False)
+            submit = pd.DataFrame()
+            submit['id'] = self.ids
+            submit['probability_{}'.format(self.type)] = self.finalPrediction['real_data']
 
-    # Automated submission through the numerai API
-        pass
+        # Saving prediction
+            submit.to_csv('../../../Datasets/Numerai/w{0}/submission{1}_{2}.csv'.format(week, submissionNumber, self.type), index = False)
+
+        # Automated submission through the numerai API
+            pass
 
 

@@ -83,7 +83,7 @@ def trainNN(num_epoch, model, train_loader, optimizer, criterion, display_step=5
                     prediction = expit(prediction.cpu().numpy())
                     target = labels.cpu().numpy()    
 
-                    print('Epoch: %d, step: %5d, training loss: %.5f, validation loss: %.5f' % 
+                    print('Epoch: %d, step: %5d, training loss: %.5f, test loss: %.5f' % 
                           (epoch + 1, i + 1, running_loss / step_number, log_loss(target, prediction)))
                     running_loss = 0.0
                     step_number = 0
@@ -105,7 +105,7 @@ def predictNN(model, dataset_loader, use_GPU=True):
     for data in dataset_loader:
 
         if len(data) == 2:
-            inputs, other = data       # Small if statement allowing to have loader 
+            inputs, other = data       # Small if statement allowing to have loader
         else:
             inputs = data              # with or without target (validation or test)
 
