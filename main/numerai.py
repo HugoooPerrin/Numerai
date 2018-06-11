@@ -23,6 +23,7 @@ import sys
 import os
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from copy import deepcopy
 
 # Preprocessing
 from scipy.spatial.distance import euclidean
@@ -84,11 +85,11 @@ class Numerai(object):
     def load_data(self, stageNumber, evaluate):
         print('\n---------------------------------------------')
         print('>> Loading data', end='...')
-        # Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(self.week))
-        # Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(self.week))
+        Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(self.week))
+        Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(self.week))
  
-        Xtrain = pd.read_csv("../../Data/numerai_training_data.csv")
-        Xvalid = pd.read_csv("../../Data/numerai_tournament_data.csv")
+        # Xtrain = pd.read_csv("../../Data/numerai_training_data.csv")
+        # Xvalid = pd.read_csv("../../Data/numerai_tournament_data.csv")
 
         self.evaluate = evaluate
         self.stageNumber = stageNumber
@@ -278,9 +279,10 @@ class Numerai(object):
         for dataset in self.Xtrain:
             if 1 in self.kmeanStage:
                 if self.kmeansInteraction:
+                    XtrainNNData[dataset] = pd.DataFrame()
                     for feature in self.Xtrain[dataset].columns:
                         for meta in self.kmeanDist[dataset].columns:
-                            XtrainNNData[dataset]['{}_{}'.format(feature, meta)] = self.Xtrain[dataset][feature] * self.kmeanDist[dataset][meta]
+                            XtrainNNData[dataset]['{}_{}'.format(feature, meta)] = self.Xtrain[dataset][feature].values * self.kmeanDist[dataset][meta].values
                     XtrainNNData[dataset] = np.array(XtrainNNData[dataset])
                 else:
                     XtrainNNData[dataset] = np.array(pd.concat([self.Xtrain[dataset].reset_index(drop=True),
@@ -346,10 +348,6 @@ class Numerai(object):
             # Training model
                 trainNN(epoch, net, train_loader, optimizer, criterion, display_step=displayStep, 
                         valid_loader=validation_loader, use_GPU=useGPU)
-
-            # Predicting
-                for dataset in self.Xtrain: 
-                    self.firstStagePrediction[dataset]['neuralNetwork'] = predictNN(net, loader[dataset], use_GPU=useGPU).flatten()
                 
             # Performance measuring
                 validPrediction = predictNN(net, valid_loader, use_GPU=useGPU)
@@ -448,7 +446,7 @@ class Numerai(object):
 
                     inter = {}
                     for dataset in self.Xtrain:
-                        inter[dataset] = self.Xtrain[dataset][features[:nFeatures]].copy()
+                        inter[dataset] = deepcopy(self.Xtrain[dataset][features[:nFeatures]])
 
                 # Adding metafeatures
                     if 1 in self.kmeanStage:
@@ -456,7 +454,8 @@ class Numerai(object):
                             for dataset in self.Xtrain:
                                 for feature in inter[dataset].columns:
                                     for meta in self.kmeanDist[dataset].columns:
-                                        inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature] * self.kmeanDist[dataset][meta]
+                                        inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature].values * self.kmeanDist[dataset][meta].values
+                                    inter[dataset].drop([feature], inplace=True, axis=1)
                         else:
                             for dataset in self.Xtrain:
                                 inter[dataset] = pd.concat([inter[dataset].reset_index(drop=True), 
@@ -512,21 +511,22 @@ class Numerai(object):
 
                         inter = {}
                         for dataset in self.Xtrain:
-                            inter[dataset] = firstStagePrediction[dataset][features[:nFeatures]].copy()
+                            inter[dataset] = deepcopy(firstStagePrediction[dataset][features[:nFeatures]])
 
                     # Adding metafeatures
-                    if 1 in self.kmeanStage:
-                        if self.kmeansInteraction:
-                            for dataset in self.Xtrain:
-                                for feature in inter[dataset].columns:
-                                    for meta in self.kmeanDist.columns:
-                                        inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature] * self.kmeanDist[dataset][meta]
+                        if 1 in self.kmeanStage:
+                            if self.kmeansInteraction:
+                                for dataset in self.Xtrain:
+                                    for feature in inter[dataset].columns:
+                                        for meta in self.kmeanDist[dataset].columns:
+                                            inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature].values * self.kmeanDist[dataset][meta].values
+                                        inter[dataset].drop([feature], inplace=True, axis=1)
+                            else:
+                                for dataset in self.Xtrain:
+                                    inter[dataset] = pd.concat([inter[dataset].reset_index(drop=True), 
+                                                                self.kmeanDist[dataset].reset_index(drop=True)], axis=1)
                         else:
-                            for dataset in self.Xtrain:
-                                inter[dataset] = pd.concat([inter[dataset].reset_index(drop=True), 
-                                                            self.kmeanDist[dataset].reset_index(drop=True)], axis=1)
-                    else:
-                        pass
+                            pass
 
                     # Tuning
                         gscv = GridSearchCV(model, parameters, scoring=score, n_jobs=nCores, cv=5)
@@ -563,7 +563,8 @@ class Numerai(object):
                 for dataset in self.compilation_data:
                     for feature in self.compilation_data[dataset].columns:
                         for meta in self.kmeanDist[dataset].columns:
-                            self.compilation_data[dataset]['{}_{}'.format(feature, meta)] = self.compilation_data[dataset][feature] * self.kmeanDist[dataset][meta]
+                            self.compilation_data[dataset]['{}_{}'.format(feature, meta)] = self.compilation_data[dataset][feature].values * self.kmeanDist[dataset][meta].values
+                        self.compilation_data[dataset].drop([feature], inplace = True, axis = 1)
             else:
                 for dataset in self.Xtrain:
                     self.compilation_data[dataset] = pd.concat([self.compilation_data[dataset].reset_index(drop=True), 

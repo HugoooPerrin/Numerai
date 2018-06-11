@@ -6,8 +6,8 @@
 
 
 from lightgbm import LGBMClassifier
-# from xgboost import XGBClassifier
-# from catboost import CatBoostClassifier
+from xgboost import XGBClassifier
+from catboost import CatBoostClassifier
 
 from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.linear_model import SGDClassifier
@@ -18,9 +18,9 @@ from sklearn.linear_model import SGDClassifier
 
 
 
-models = {'ExtraTrees1':[0, 5, 10, ExtraTreesClassifier(n_jobs = 1, 
+models = {'ExtraTrees1':[1, 5, 10, ExtraTreesClassifier(n_jobs = 1, 
                                                          criterion = 'entropy',
-                                                         max_depth = 4,
+                                                         max_depth = 3,
                                                          bootstrap = True),
 
                                     {'min_samples_split': [250, 1000],
@@ -28,9 +28,9 @@ models = {'ExtraTrees1':[0, 5, 10, ExtraTreesClassifier(n_jobs = 1,
                                      'min_samples_leaf': [250, 1000]}],
 
 
-         'ExtraTrees2': [0, 5, 10, ExtraTreesClassifier(n_jobs = 1, 
+         'ExtraTrees2': [1, 5, 10, ExtraTreesClassifier(n_jobs = 1, 
                                                          criterion = 'gini',
-                                                         max_depth = 4,
+                                                         max_depth = 3,
                                                          bootstrap = True),
 
                                     {'min_samples_split': [250, 1000],
@@ -38,12 +38,12 @@ models = {'ExtraTrees1':[0, 5, 10, ExtraTreesClassifier(n_jobs = 1,
                                      'min_samples_leaf': [250, 1000]}],
 
 
-         # 'XGBoost':     [0, 1, 50, XGBClassifier(max_depth = 3, 
-         #                                         n_estimators = 30,
-         #                                         nthread = 1),
+         'XGBoost':     [0, 1, 50, XGBClassifier(max_depth = 3, 
+                                                 n_estimators = 30,
+                                                 nthread = 1),
  
-         #                            {'subsample': [0.5, 0.75, 1],                                    
-         #                             'learning_rate': [0.01, 0.1, 0.5, 1]}],
+                                    {'subsample': [0.5, 0.75, 1],                                    
+                                     'learning_rate': [0.01, 0.1, 0.5, 1]}],
 
 
          'SGDC':        [0, 1, 20, SGDClassifier(loss = 'log',
@@ -87,12 +87,12 @@ models = {'ExtraTrees1':[0, 5, 10, ExtraTreesClassifier(n_jobs = 1,
                                     {'n_estimators': [25, 50],                                  
                                      'min_child_samples': [100, 500],
                                      'reg_lambda': [0.01, 0.1],
-                                     'num_leaves': [8, 16, 32]}]}
+                                     'num_leaves': [8, 16, 32]}],
 
-         # 'Catboost':    [0, 2, 25, CatBoostClassifier(loss_function='Logloss',
-         #                                               verbose=False),
+         'Catboost':    [0, 2, 25, CatBoostClassifier(loss_function='Logloss',
+                                                       verbose=False),
 
-         #                            {'iterations': [2, 5],
-         #                             'learning_rate': [0.1, 1],
-         #                             'depth': [2, 3, 5],
-         #                             'l2_leaf_reg': [0.001, 0.01, 0.1]}]}
+                                    {'iterations': [2, 5],
+                                     'learning_rate': [0.1, 1],
+                                     'depth': [2, 3, 5],
+                                     'l2_leaf_reg': [0.001, 0.01, 0.1]}]}

@@ -7,6 +7,7 @@ Running algorithm to search best fitting model
 
 
 Next steps:
+    - Memory optimization (inter & feature only when computing)
     - Add more randomness (random feature engineering ?)
     - Try more features engineering
     - Using era ?
@@ -50,7 +51,7 @@ if __name__ == '__main__':
     #================================ 2. FEATURE ENGINEERING
 
 
-    stacking.kmeansTrick(k=3, stage=[1, 2], interaction=True)
+    stacking.kmeansTrick(k=3, stage=[2], interaction=True)
 
 
     #=========================================================================================================
@@ -78,7 +79,7 @@ if __name__ == '__main__':
 
 
     ## MACHINE LEARNING
-    nCores = 4
+    nCores = 8
 
     stacking.training(nCores, models)
 
