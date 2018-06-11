@@ -7,8 +7,8 @@ Running algorithm to search best fitting model
 
 
 Next steps:
-    - Try meta features
-    - Feature interaction / polynomial
+    - Add more randomness (random feature engineering ?)
+    - Try more features engineering
     - Using era ?
     - hardcore EDA
 """
@@ -40,17 +40,17 @@ if __name__ == '__main__':
     #================================ 1. CLASS
 
 
-    stacking = Numerai(week=111, name='bernie')
+    stacking = Numerai(week=111, name='jordan')
 
     # Loading data:
-    stacking.load_data(stageNumber=1, evaluate=False)
+    stacking.load_data(stageNumber=1, evaluate=True)
 
 
     #=========================================================================================================
     #================================ 2. FEATURE ENGINEERING
 
 
-    stacking.kmeansTrick(k=5, interaction=False)
+    stacking.kmeansTrick(k=3, stage=[1, 2], interaction=True)
 
 
     #=========================================================================================================
@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
 
     ## MACHINE LEARNING
-    nCores = -1
+    nCores = 4
 
     stacking.training(nCores, models)
 
