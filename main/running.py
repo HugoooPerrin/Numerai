@@ -4,16 +4,6 @@
 
 """
 Running algorithm to search best fitting model
-
-
-Next steps:
-    - Feature engineering: autoencoder (learn representation of your data on different levels)
-    - Feature engineering: PCA (keep first vectors)
-    - Function to compute feature importance (including new features) ?
-    - Memory optimization (inter & feature only when computing)
-    - Add more randomness (random feature engineering ?)
-    - Using era ?
-    - hardcore EDA
 """
 
 
@@ -45,7 +35,7 @@ if __name__ == '__main__':
 
     stacking = Numerai(week=111, name='jordan')
 
-    # Loading data:
+    # Loading data
     stacking.load_data(stageNumber=1, evaluate=True)
 
 
@@ -53,7 +43,8 @@ if __name__ == '__main__':
     #================================ 2. FEATURE ENGINEERING
 
 
-    stacking.kmeansTrick(k=3, stage=[2], interaction=True)
+    stacking.kmeansTrick(k=3, stage=[1], interaction=True)
+    # stacking.kernelPCA(n_components=3, kernel='rbf', stage=[1], interaction=True)
 
 
     #=========================================================================================================
@@ -81,7 +72,7 @@ if __name__ == '__main__':
 
 
     ## MACHINE LEARNING
-    nCores = 8
+    nCores = 6
 
     stacking.training(nCores, models)
 

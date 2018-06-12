@@ -7,6 +7,20 @@
 """
 Main class designed to quickly evaluate different model architectures over Numerai dataset
 
+
+
+Next steps:
+    - Feature engineering: autoencoder (learn representation of your data on different levels)
+    - Feature engineering: PCA (keep first vectors)
+    - Function to compute feature importance (including new features) ?
+    - Memory optimization (inter & feature only when computing)
+    - Add more randomness (random feature engineering ?)
+    - Using era ?
+    - hardcore EDA
+
+
+
+Author: Hugo Perrin
 """
 
 
@@ -68,7 +82,8 @@ class Numerai(object):
 
         self.week = week
         self.type = name
-        self.kmeanStage = False
+        self.kmeanStage = []
+        self.pcaStage = []
 
         self.modelNames = []
         self.models = []
@@ -215,7 +230,7 @@ class Numerai(object):
 #------------------------------------- FEATURE ENGINEERING ------------------------------------
 
 
-    def kmeansTrick(self, k, stage=[1], interaction=False):
+    def kmeansTrick(self, k, stage, interaction):
 
 
         print('\n---------------------------------------------')
@@ -240,7 +255,7 @@ class Numerai(object):
 
 
 
-    def PCA(self, n_components, kernel='rbf', stage=[1], interaction=False):
+    def kernelPCA(self, n_components, kernel, stage, interaction):
 
         print('\n---------------------------------------------')
         print('>> Processing KernelPCA ------\n')
@@ -250,7 +265,7 @@ class Numerai(object):
 
     # Unsupervised learning
         print('Fitting model', end='...')
-        model = KernelPCA(n_components=n_components, kernel='rbf')
+        model = KernelPCA(n_components=n_components, kernel=kernel)
         model.fit(self.Xtrain[1])
         print('done')
 
@@ -264,12 +279,13 @@ class Numerai(object):
 
 
 
-    def meanEncoding(self, n, stage, interaction=False):
+    def meanEncoding(self, n, stage, interaction):
         pass
 
 
 
-    def autoEncoder(self, n, stage, interaction=False):
+    def autoEncoder(self, n, stage, interaction,
+                    architecture, learningRate=0.0001, batch=64, epoch=5, cvNumber=1, displayStep=1000, useGPU=True, evaluate=True):
         pass
 
 
@@ -294,11 +310,12 @@ class Numerai(object):
         YtrainNNData = {}
         for dataset in self.Xtrain:
 
+            XtrainNNData[dataset] = deepcopy(self.Xtrain[dataset])
+
         # Kmeans trick ------------ 
 
             if 1 in self.kmeanStage:
                 if self.kmeansInteraction:
-                    XtrainNNData[dataset] = pd.DataFrame()   # Dataframe creation
                     for feature in self.Xtrain[dataset].columns:
                         for meta in self.kmeanDist[dataset].columns:
                             XtrainNNData[dataset]['{}_{}'.format(feature, meta)] = self.Xtrain[dataset][feature].values * self.kmeanDist[dataset][meta].values
@@ -316,11 +333,6 @@ class Numerai(object):
                 else:
                     XtrainNNData[dataset] = pd.concat([self.Xtrain[dataset].reset_index(drop=True),
                                                        self.KernelPCA[dataset].reset_index(drop=True)], axis=1)
-
-        # No metafeature ----------
-
-            else:
-                XtrainNNData[dataset] = self.Xtrain[dataset]
 
         # To array
         for dataset in self.Xtrain:
