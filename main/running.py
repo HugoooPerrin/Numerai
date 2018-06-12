@@ -7,9 +7,11 @@ Running algorithm to search best fitting model
 
 
 Next steps:
+    - Feature engineering: autoencoder (learn representation of your data on different levels)
+    - Feature engineering: PCA (keep first vectors)
+    - Function to compute feature importance (including new features) ?
     - Memory optimization (inter & feature only when computing)
     - Add more randomness (random feature engineering ?)
-    - Try more features engineering
     - Using era ?
     - hardcore EDA
 """

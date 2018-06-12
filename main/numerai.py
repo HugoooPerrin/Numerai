@@ -13,7 +13,7 @@ Main class designed to quickly evaluate different model architectures over Numer
 
 
 #=========================================================================================================
-#================================ MODULE
+#============================================ MODULE =====================================================
 
 
 # General
@@ -27,7 +27,7 @@ from copy import deepcopy
 
 # Preprocessing
 from scipy.spatial.distance import euclidean
-from sklearn.decomposition import PCA
+from sklearn.decomposition import KernelPCA
 from sklearn import cluster
 
 # Metrics
@@ -57,7 +57,7 @@ def diff(t_a, t_b):
 from architecture import models
 
 #=========================================================================================================
-#================================ NUMERAI CLASS
+#============================================ NUMERAI CLASS ==============================================
 
 
 class Numerai(object):
@@ -80,6 +80,9 @@ class Numerai(object):
         self.notYetNN_comp = True
         self.notYetNN_train = True
 
+
+#----------------------------------------------------------------------------------------------
+#-------------------------------------------- DATA --------------------------------------------
 
 
     def load_data(self, stageNumber, evaluate):
@@ -208,23 +211,11 @@ class Numerai(object):
                                3: Ytrain3}
 
 
-
-    def _add_model(self, models): 
-
-        """
-        A model should be sklearn-friendly and have a "predict_proba" method
-        """
-        for name in models:
-            self.modelNames.append(name)
-            self.baggingSteps.append(models[name][1])
-            self.nFeatures.append(models[name][2])
-            self.stage.append(models[name][0])
-            self.models.append(models[name][3])
-            self.parameters.append(models[name][4])
+#----------------------------------------------------------------------------------------------
+#------------------------------------- FEATURE ENGINEERING ------------------------------------
 
 
-
-    def kmeansTrick(self, k, stage, interaction=False):
+    def kmeansTrick(self, k, stage=[1], interaction=False):
 
 
         print('\n---------------------------------------------')
@@ -233,22 +224,10 @@ class Numerai(object):
         self.kmeanStage = stage
         self.kmeansInteraction = interaction
 
-    # Data
-        if not self.evaluate:
-            if self.stageNumber == 1:
-                data = pd.concat([self.Xtrain[1], self.Xtrain[2]])
-            elif self.stageNumber == 2:
-                data = pd.concat([self.Xtrain[1], self.Xtrain[2], self.Xtrain[3]])
-        else:
-            if self.stageNumber == 1:
-                data = pd.concat([self.Xtrain[1], self.Xtrain[2], self.Xtrain['test']])
-            elif self.stageNumber == 2:
-                data = pd.concat([self.Xtrain[1], self.Xtrain[2], self.Xtrain[3], self.Xtrain['test']])
-
     # Unsupervised learning
         print('Fitting model', end='...')
         model = cluster.KMeans(n_clusters=k, precompute_distances=False)
-        model.fit(data)
+        model.fit(self.Xtrain[1])
         print('done')
 
     # Feature engineering
@@ -259,6 +238,43 @@ class Numerai(object):
             self.kmeanDist[dataset] = pd.DataFrame(self.kmeanDist[dataset], columns=['kmeans{}'.format(i) for i in range(k)])
         print('done')
 
+
+
+    def PCA(self, n_components, kernel='rbf', stage=[1], interaction=False):
+
+        print('\n---------------------------------------------')
+        print('>> Processing KernelPCA ------\n')
+
+        self.pcaStage = stage
+        self.pcaInteraction = interaction
+
+    # Unsupervised learning
+        print('Fitting model', end='...')
+        model = KernelPCA(n_components=n_components, kernel='rbf')
+        model.fit(self.Xtrain[1])
+        print('done')
+
+    # Feature engineering
+        print('Generating KernelPCA features', end='...')
+        self.KernelPCA = {}
+        for dataset in self.Xtrain:
+            self.KernelPCA[dataset] = model.transform(self.Xtrain[dataset])
+            self.KernelPCA[dataset] = pd.DataFrame(self.KernelPCA[dataset], columns=['kernelPCA{}'.format(i) for i in range(n_components)])
+        print('done')
+
+
+
+    def meanEncoding(self, n, stage, interaction=False):
+        pass
+
+
+
+    def autoEncoder(self, n, stage, interaction=False):
+        pass
+
+
+#----------------------------------------------------------------------------------------------
+#------------------------------------------- MODELS -------------------------------------------
 
 
     def trainingNN(self, architecture, learningRate=0.0001, batch=64, epoch=5, 
@@ -277,19 +293,38 @@ class Numerai(object):
         XtrainNNData = {}
         YtrainNNData = {}
         for dataset in self.Xtrain:
+
+        # Kmeans trick ------------ 
+
             if 1 in self.kmeanStage:
                 if self.kmeansInteraction:
-                    XtrainNNData[dataset] = pd.DataFrame()
+                    XtrainNNData[dataset] = pd.DataFrame()   # Dataframe creation
                     for feature in self.Xtrain[dataset].columns:
                         for meta in self.kmeanDist[dataset].columns:
                             XtrainNNData[dataset]['{}_{}'.format(feature, meta)] = self.Xtrain[dataset][feature].values * self.kmeanDist[dataset][meta].values
-                    XtrainNNData[dataset] = np.array(XtrainNNData[dataset])
                 else:
-                    XtrainNNData[dataset] = np.array(pd.concat([self.Xtrain[dataset].reset_index(drop=True),
-                                                                self.kmeanDist[dataset].reset_index(drop=True)], axis=1))
-            else:
-                XtrainNNData[dataset] = np.array(self.Xtrain[dataset])
+                    XtrainNNData[dataset] = pd.concat([self.Xtrain[dataset].reset_index(drop=True),
+                                                       self.kmeanDist[dataset].reset_index(drop=True)], axis=1)
 
+        # Kernel PCA --------------
+
+            if 1 in self.pcaStage:
+                if self.pcaInteraction:
+                    for feature in self.Xtrain[dataset].columns:
+                        for meta in self.KernelPCA[dataset].columns:
+                            XtrainNNData[dataset]['{}_{}'.format(feature, meta)] = self.Xtrain[dataset][feature].values * self.KernelPCA[dataset][meta].values
+                else:
+                    XtrainNNData[dataset] = pd.concat([self.Xtrain[dataset].reset_index(drop=True),
+                                                       self.KernelPCA[dataset].reset_index(drop=True)], axis=1)
+
+        # No metafeature ----------
+
+            else:
+                XtrainNNData[dataset] = self.Xtrain[dataset]
+
+        # To array
+        for dataset in self.Xtrain:
+            XtrainNNData[dataset] = np.array(XtrainNNData[dataset])
             if dataset != 'real_data':
                 YtrainNNData[dataset] = np.array(self.Ytrain[dataset].values)
                 YtrainNNData[dataset] = YtrainNNData[dataset].reshape(YtrainNNData[dataset].shape[0], 1)
@@ -405,6 +440,21 @@ class Numerai(object):
 
 
 
+    def _add_model(self, models): 
+
+        """
+        A model should be sklearn-friendly and have a "predict_proba" method
+        """
+        for name in models:
+            self.modelNames.append(name)
+            self.baggingSteps.append(models[name][1])
+            self.nFeatures.append(models[name][2])
+            self.stage.append(models[name][0])
+            self.models.append(models[name][3])
+            self.parameters.append(models[name][4])
+
+
+
     def training(self, nCores=-1, models = models, stageNumber=1, interaction=None):
 
     # Loading models
@@ -448,20 +498,38 @@ class Numerai(object):
                     for dataset in self.Xtrain:
                         inter[dataset] = deepcopy(self.Xtrain[dataset][features[:nFeatures]])
 
-                # Adding metafeatures
+                # Kmeans trick
                     if 1 in self.kmeanStage:
                         if self.kmeansInteraction:
                             for dataset in self.Xtrain:
                                 for feature in inter[dataset].columns:
                                     for meta in self.kmeanDist[dataset].columns:
                                         inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature].values * self.kmeanDist[dataset][meta].values
-                                    inter[dataset].drop([feature], inplace=True, axis=1)
                         else:
                             for dataset in self.Xtrain:
                                 inter[dataset] = pd.concat([inter[dataset].reset_index(drop=True), 
                                                             self.kmeanDist[dataset].reset_index(drop=True)], axis=1)
                     else:
                         pass
+
+                # Kernel PCA
+                    if 1 in self.pcaStage:
+                        if self.pcaInteraction:
+                            for dataset in self.Xtrain:
+                                for feature in inter[dataset].columns:
+                                    for meta in self.KernelPCA[dataset].columns:
+                                        inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature].values * self.KernelPCA[dataset][meta].values
+                        else:
+                            for dataset in self.Xtrain:
+                                inter[dataset] = pd.concat([inter[dataset].reset_index(drop=True), 
+                                                            self.KernelPCA[dataset].reset_index(drop=True)], axis=1)
+                    else:
+                        pass
+
+                # Keeping only processed features
+                    if False:
+                        for dataset in self.Xtrain:
+                            inter[dataset].drop([feature], inplace=True, axis=1)
 
                 # Tuning
                     gscv = GridSearchCV(model, parameters, scoring=score, n_jobs=nCores, cv=4)
@@ -513,20 +581,38 @@ class Numerai(object):
                         for dataset in self.Xtrain:
                             inter[dataset] = deepcopy(firstStagePrediction[dataset][features[:nFeatures]])
 
-                    # Adding metafeatures
+                    # Kmeans trick
                         if 1 in self.kmeanStage:
                             if self.kmeansInteraction:
                                 for dataset in self.Xtrain:
                                     for feature in inter[dataset].columns:
                                         for meta in self.kmeanDist[dataset].columns:
                                             inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature].values * self.kmeanDist[dataset][meta].values
-                                        inter[dataset].drop([feature], inplace=True, axis=1)
                             else:
                                 for dataset in self.Xtrain:
                                     inter[dataset] = pd.concat([inter[dataset].reset_index(drop=True), 
                                                                 self.kmeanDist[dataset].reset_index(drop=True)], axis=1)
                         else:
                             pass
+
+                    # Kernel PCA
+                        if 1 in self.pcaStage:
+                            if self.pcaInteraction:
+                                for dataset in self.Xtrain:
+                                    for feature in inter[dataset].columns:
+                                        for meta in self.KernelPCA[dataset].columns:
+                                            inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature].values * self.KernelPCA[dataset][meta].values
+                            else:
+                                for dataset in self.Xtrain:
+                                    inter[dataset] = pd.concat([inter[dataset].reset_index(drop=True), 
+                                                                self.KernelPCA[dataset].reset_index(drop=True)], axis=1)
+                        else:
+                            pass
+
+                    # Keeping only processed features
+                        if False:
+                            for dataset in self.Xtrain:
+                                inter[dataset].drop([feature], inplace=True, axis=1)
 
                     # Tuning
                         gscv = GridSearchCV(model, parameters, scoring=score, n_jobs=nCores, cv=5)
@@ -556,15 +642,13 @@ class Numerai(object):
             self.compilation_data = secondStagePrediction
             self.datasetToUse = 3
 
-    # Adding metafeatures
-
+    # Kmeans trick
         if self.datasetToUse in self.kmeanStage:
             if self.kmeansInteraction:
-                for dataset in self.compilation_data:
+                for dataset in self.Xtrain:
                     for feature in self.compilation_data[dataset].columns:
                         for meta in self.kmeanDist[dataset].columns:
                             self.compilation_data[dataset]['{}_{}'.format(feature, meta)] = self.compilation_data[dataset][feature].values * self.kmeanDist[dataset][meta].values
-                        self.compilation_data[dataset].drop([feature], inplace = True, axis = 1)
             else:
                 for dataset in self.Xtrain:
                     self.compilation_data[dataset] = pd.concat([self.compilation_data[dataset].reset_index(drop=True), 
@@ -572,6 +656,23 @@ class Numerai(object):
         else:
             pass
 
+    # Kernel PCA
+        if self.datasetToUse in self.pcaStage:
+            if self.pcaInteraction:
+                for dataset in self.compilation_data:
+                    for feature in self.compilation_data[dataset].columns:
+                        for meta in self.KernelPCA[dataset].columns:
+                            self.compilation_data[dataset]['{}_{}'.format(feature, meta)] = self.compilation_data[dataset][feature].values * self.KernelPCA[dataset][meta].values
+            else:
+                for dataset in self.Xtrain:
+                   self.compilation_data[dataset] = pd.concat([self.compilation_data[dataset].reset_index(drop=True), 
+                                                                self.KernelPCA[dataset].reset_index(drop=True)], axis=1)
+        else:
+            pass
+
+
+#----------------------------------------------------------------------------------------------
+#---------------------------------------- COMPILATION -----------------------------------------
 
 
     def compile(self, nCores=-1, neuralNetworkCompiler=False, architecture=None, learningRate=0.0001, 
@@ -729,6 +830,9 @@ class Numerai(object):
                 print('Final valid log loss : %.5f\n' %
                     (log_loss(self.Ytrain['valid'], self.finalPrediction['valid']['final_prediction'])))
 
+
+#----------------------------------------------------------------------------------------------
+#---------------------------------------- SUBMISSION ------------------------------------------
 
 
     def submit(self, submissionNumber, week):
