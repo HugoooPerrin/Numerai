@@ -41,7 +41,7 @@ from copy import deepcopy
 
 # Preprocessing
 from scipy.spatial.distance import euclidean
-from sklearn.decomposition import KernelPCA
+from sklearn.decomposition import PCA
 from sklearn import cluster
 
 # Metrics
@@ -241,7 +241,7 @@ class Numerai(object):
 
     # Unsupervised learning
         print('Fitting model', end='...')
-        model = cluster.KMeans(n_clusters=k, precompute_distances=False)
+        model = cluster.KMeans(n_clusters=k, precompute_distances=False, n_jobs=-1)
         model.fit(self.Xtrain[1])
         print('done')
 
@@ -255,26 +255,26 @@ class Numerai(object):
 
 
 
-    def kernelPCA(self, n_components, kernel, stage, interaction):
+    def PCA(self, n_components, stage, interaction):
 
         print('\n---------------------------------------------')
-        print('>> Processing KernelPCA ------\n')
+        print('>> Processing PCA ------\n')
 
         self.pcaStage = stage
         self.pcaInteraction = interaction
 
     # Unsupervised learning
         print('Fitting model', end='...')
-        model = KernelPCA(n_components=n_components, kernel=kernel)
+        model = PCA(n_components=n_components)
         model.fit(self.Xtrain[1])
         print('done')
 
     # Feature engineering
-        print('Generating KernelPCA features', end='...')
-        self.KernelPCA = {}
+        print('Generating PCA features', end='...')
+        self.PCA = {}
         for dataset in self.Xtrain:
-            self.KernelPCA[dataset] = model.transform(self.Xtrain[dataset])
-            self.KernelPCA[dataset] = pd.DataFrame(self.KernelPCA[dataset], columns=['kernelPCA{}'.format(i) for i in range(n_components)])
+            self.PCA[dataset] = model.transform(self.Xtrain[dataset])
+            self.PCA[dataset] = pd.DataFrame(self.PCA[dataset], columns=['PCA{}'.format(i) for i in range(n_components)])
         print('done')
 
 
@@ -320,7 +320,7 @@ class Numerai(object):
                         for meta in self.kmeanDist[dataset].columns:
                             XtrainNNData[dataset]['{}_{}'.format(feature, meta)] = self.Xtrain[dataset][feature].values * self.kmeanDist[dataset][meta].values
                 else:
-                    XtrainNNData[dataset] = pd.concat([self.Xtrain[dataset].reset_index(drop=True),
+                    XtrainNNData[dataset] = pd.concat([XtrainNNData[dataset].reset_index(drop=True),
                                                        self.kmeanDist[dataset].reset_index(drop=True)], axis=1)
 
         # Kernel PCA --------------
@@ -328,11 +328,11 @@ class Numerai(object):
             if 1 in self.pcaStage:
                 if self.pcaInteraction:
                     for feature in self.Xtrain[dataset].columns:
-                        for meta in self.KernelPCA[dataset].columns:
-                            XtrainNNData[dataset]['{}_{}'.format(feature, meta)] = self.Xtrain[dataset][feature].values * self.KernelPCA[dataset][meta].values
+                        for meta in self.PCA[dataset].columns:
+                            XtrainNNData[dataset]['{}_{}'.format(feature, meta)] = self.Xtrain[dataset][feature].values * self.PCA[dataset][meta].values
                 else:
-                    XtrainNNData[dataset] = pd.concat([self.Xtrain[dataset].reset_index(drop=True),
-                                                       self.KernelPCA[dataset].reset_index(drop=True)], axis=1)
+                    XtrainNNData[dataset] = pd.concat([XtrainNNData[dataset].reset_index(drop=True),
+                                                       self.PCA[dataset].reset_index(drop=True)], axis=1)
 
         # To array
         for dataset in self.Xtrain:
@@ -402,8 +402,6 @@ class Numerai(object):
 
                 cvScore += score*(1/cvNumber)
 
-                print("\nIntermediate score: %.5f" % score)
-
             print("\nValid log loss: %.5f\n" % cvScore)
 
         else:
@@ -448,7 +446,7 @@ class Numerai(object):
 
         del XtrainNNData, YtrainNNData
 
-        print('\nRunning time {}'.format(diff(datetime.now(), time)))
+        print('Running time {}\n'.format(diff(datetime.now(), time)))
 
 
 
@@ -510,11 +508,13 @@ class Numerai(object):
                     for dataset in self.Xtrain:
                         inter[dataset] = deepcopy(self.Xtrain[dataset][features[:nFeatures]])
 
+                    columns = inter[1].columns
+
                 # Kmeans trick
                     if 1 in self.kmeanStage:
                         if self.kmeansInteraction:
                             for dataset in self.Xtrain:
-                                for feature in inter[dataset].columns:
+                                for feature in columns:
                                     for meta in self.kmeanDist[dataset].columns:
                                         inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature].values * self.kmeanDist[dataset][meta].values
                         else:
@@ -528,13 +528,13 @@ class Numerai(object):
                     if 1 in self.pcaStage:
                         if self.pcaInteraction:
                             for dataset in self.Xtrain:
-                                for feature in inter[dataset].columns:
-                                    for meta in self.KernelPCA[dataset].columns:
-                                        inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature].values * self.KernelPCA[dataset][meta].values
+                                for feature in columns:
+                                    for meta in self.PCA[dataset].columns:
+                                        inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature].values * self.PCA[dataset][meta].values
                         else:
                             for dataset in self.Xtrain:
                                 inter[dataset] = pd.concat([inter[dataset].reset_index(drop=True), 
-                                                            self.KernelPCA[dataset].reset_index(drop=True)], axis=1)
+                                                            self.PCA[dataset].reset_index(drop=True)], axis=1)
                     else:
                         pass
 
@@ -593,11 +593,13 @@ class Numerai(object):
                         for dataset in self.Xtrain:
                             inter[dataset] = deepcopy(firstStagePrediction[dataset][features[:nFeatures]])
 
+                        columns = inter[2].columns
+
                     # Kmeans trick
                         if 1 in self.kmeanStage:
                             if self.kmeansInteraction:
                                 for dataset in self.Xtrain:
-                                    for feature in inter[dataset].columns:
+                                    for feature in columns:
                                         for meta in self.kmeanDist[dataset].columns:
                                             inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature].values * self.kmeanDist[dataset][meta].values
                             else:
@@ -611,13 +613,13 @@ class Numerai(object):
                         if 1 in self.pcaStage:
                             if self.pcaInteraction:
                                 for dataset in self.Xtrain:
-                                    for feature in inter[dataset].columns:
-                                        for meta in self.KernelPCA[dataset].columns:
-                                            inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature].values * self.KernelPCA[dataset][meta].values
+                                    for feature in columns:
+                                        for meta in self.PCA[dataset].columns:
+                                            inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature].values * self.PCA[dataset][meta].values
                             else:
                                 for dataset in self.Xtrain:
                                     inter[dataset] = pd.concat([inter[dataset].reset_index(drop=True), 
-                                                                self.KernelPCA[dataset].reset_index(drop=True)], axis=1)
+                                                                self.PCA[dataset].reset_index(drop=True)], axis=1)
                         else:
                             pass
 
@@ -645,42 +647,61 @@ class Numerai(object):
 
             print('Second stage running time {}'.format(diff(datetime.now(), time1)))
 
-    # For compilation
+    # Memory efficiency
+        del self.Xtrain
 
+    # For compilation
         if stageNumber == 1:
             self.compilation_data = firstStagePrediction
+            del firstStagePrediction
             self.datasetToUse = 2
         elif stageNumber == 2:
             self.compilation_data = secondStagePrediction
+            del secondStagePrediction
             self.datasetToUse = 3
+
+        columns = self.compilation_data[self.datasetToUse].columns
 
     # Kmeans trick
         if self.datasetToUse in self.kmeanStage:
             if self.kmeansInteraction:
-                for dataset in self.Xtrain:
-                    for feature in self.compilation_data[dataset].columns:
+                for dataset in self.compilation_data:
+                    for feature in columns:
                         for meta in self.kmeanDist[dataset].columns:
                             self.compilation_data[dataset]['{}_{}'.format(feature, meta)] = self.compilation_data[dataset][feature].values * self.kmeanDist[dataset][meta].values
             else:
-                for dataset in self.Xtrain:
+                for dataset in self.compilation_data:
                     self.compilation_data[dataset] = pd.concat([self.compilation_data[dataset].reset_index(drop=True), 
                                                                 self.kmeanDist[dataset].reset_index(drop=True)], axis=1)
         else:
+            pass
+
+    # Memory efficiency
+        try:
+            del self.kmeanDist
+        except:
             pass
 
     # Kernel PCA
         if self.datasetToUse in self.pcaStage:
             if self.pcaInteraction:
                 for dataset in self.compilation_data:
-                    for feature in self.compilation_data[dataset].columns:
-                        for meta in self.KernelPCA[dataset].columns:
-                            self.compilation_data[dataset]['{}_{}'.format(feature, meta)] = self.compilation_data[dataset][feature].values * self.KernelPCA[dataset][meta].values
+                    for feature in columns:
+                        for meta in self.PCA[dataset].columns:
+                            self.compilation_data[dataset]['{}_{}'.format(feature, meta)] = self.compilation_data[dataset][feature].values * self.PCA[dataset][meta].values
             else:
-                for dataset in self.Xtrain:
+                for dataset in self.compilation_data:
                    self.compilation_data[dataset] = pd.concat([self.compilation_data[dataset].reset_index(drop=True), 
-                                                                self.KernelPCA[dataset].reset_index(drop=True)], axis=1)
+                                                                self.PCA[dataset].reset_index(drop=True)], axis=1)
         else:
             pass
+
+    # Memory efficiency
+        try:
+            del self.PCA
+        except:
+            pass
+
 
 
 #----------------------------------------------------------------------------------------------
@@ -697,7 +718,7 @@ class Numerai(object):
         
     # Data
         self.finalPrediction = {}
-        for dataset in self.Xtrain:
+        for dataset in self.compilation_data:
             self.finalPrediction[dataset] = pd.DataFrame()
 
         if neuralNetworkCompiler:
@@ -706,7 +727,7 @@ class Numerai(object):
             print('>> Processing compilation [Neural Network]\n')
 
             if self.notYetNN_comp:
-                for dataset in self.Xtrain:
+                for dataset in self.compilation_data:
                     self.compilation_data[dataset] = np.array(self.compilation_data[dataset])
                     if dataset != 'real_data':
                         self.Ytrain[dataset] = np.array(self.Ytrain[dataset].values)
@@ -777,8 +798,6 @@ class Numerai(object):
 
                     cvScore += score*(1/cvNumber)
 
-                    print("\nIntermediate score: %.5f" % score)
-
                 print("\nFinal valid log loss: %.5f\n" % cvScore)
                 print('\nTotal running time {}'.format(diff(datetime.now(), time)))
 
@@ -818,7 +837,7 @@ class Numerai(object):
             # Predicting
                 self.finalPrediction['real_data'] = predictNN(net, real_loader, use_GPU=useGPU)
 
-                print('\nRunning time {}'.format(diff(datetime.now(), time)))
+                print('\nRunning time {}\n'.format(diff(datetime.now(), time)))
         else:
             # Tuning
             for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.baggingSteps, self.nFeatures, self.stage):
@@ -832,10 +851,10 @@ class Numerai(object):
                     gscv.fit(self.compilation_data[self.datasetToUse], self.Ytrain[self.datasetToUse])                        ## COMPILATION TRAINING ON SECOND STAGE PREDICTION OF XTRAIN3
                                                                                                                               ## IF THERE IS TWO STAGES, ELSE ON XTRAIN2
                     # Final prediction
-                    for dataset in self.Xtrain:
+                    for dataset in self.compilation_data:
                         self.finalPrediction[dataset]['final_prediction'] = gscv.predict_proba(self.compilation_data[dataset])[:,1]
 
-            print('\nCompilation running time {}'.format(diff(datetime.now(), time)))
+            print('\nCompilation running time {}\n'.format(diff(datetime.now(), time)))
             if self.evaluate:
                 print('\nFinal test log loss : %.5f' %
                     (log_loss(self.Ytrain['test'], self.finalPrediction['test']['final_prediction'])))                        

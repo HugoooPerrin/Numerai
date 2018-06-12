@@ -18,7 +18,7 @@ from sklearn.linear_model import SGDClassifier
 
 
 
-models = {'ExtraTrees1':[1, 5, 10, ExtraTreesClassifier(n_jobs = 1, 
+models = {'ExtraTrees1':[1, 5, 15, ExtraTreesClassifier(n_jobs = 1, 
                                                          criterion = 'entropy',
                                                          max_depth = 3,
                                                          bootstrap = True),
@@ -28,7 +28,7 @@ models = {'ExtraTrees1':[1, 5, 10, ExtraTreesClassifier(n_jobs = 1,
                                      'min_samples_leaf': [250, 1000]}],
 
 
-         'ExtraTrees2': [1, 5, 10, ExtraTreesClassifier(n_jobs = 1, 
+         'ExtraTrees2': [0, 5, 15, ExtraTreesClassifier(n_jobs = 1, 
                                                          criterion = 'gini',
                                                          max_depth = 3,
                                                          bootstrap = True),

@@ -36,15 +36,15 @@ if __name__ == '__main__':
     stacking = Numerai(week=111, name='jordan')
 
     # Loading data
-    stacking.load_data(stageNumber=1, evaluate=True)
+    stacking.load_data(stageNumber=1, evaluate=False)
 
 
     #=========================================================================================================
     #================================ 2. FEATURE ENGINEERING
 
 
-    stacking.kmeansTrick(k=3, stage=[1], interaction=True)
-    # stacking.kernelPCA(n_components=3, kernel='rbf', stage=[1], interaction=True)
+    stacking.kmeansTrick(k=15, stage=[2], interaction=False)
+    stacking.PCA(n_components=5, stage=[1], interaction=False)
 
 
     #=========================================================================================================
@@ -58,21 +58,21 @@ if __name__ == '__main__':
     #         super(NN, self).__init__()
 
     #         self.linear = nn.Sequential(
-    #             nn.Linear(55, 25),
+    #             nn.Linear(200, 20),
     #             nn.ReLU(),
-    #             nn.Dropout(0.5),
-    #             nn.Linear(25, 1))
+    #             nn.Dropout(0.4),
+    #             nn.Linear(20, 1))
 
     #     def forward(self, x):
     #         out = self.linear(x)
     #         return out
         
-    # stacking.trainingNN(architecture=NN(), learningRate=0.00003, batch=64, epoch=6,
-    #                        cvNumber=3, displayStep=1000, useGPU=True, evaluate=False)
+    # stacking.trainingNN(architecture=NN(), learningRate=0.000005, batch=64, epoch=5,
+    #                        cvNumber=1, displayStep=1000, useGPU=True, evaluate=True)
 
 
     ## MACHINE LEARNING
-    nCores = 6
+    nCores = 8
 
     stacking.training(nCores, models)
 
