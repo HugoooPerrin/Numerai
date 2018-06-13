@@ -103,11 +103,11 @@ class Numerai(object):
     def load_data(self, stageNumber, evaluate):
         print('\n---------------------------------------------')
         print('>> Loading data', end='...')
-        Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(self.week))
-        Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(self.week))
+        # Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(self.week))
+        # Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(self.week))
  
-        # Xtrain = pd.read_csv("../../Data/numerai_training_data.csv")
-        # Xvalid = pd.read_csv("../../Data/numerai_tournament_data.csv")
+        Xtrain = pd.read_csv("../../Data/numerai_training_data.csv")
+        Xvalid = pd.read_csv("../../Data/numerai_tournament_data.csv")
 
         self.evaluate = evaluate
         self.stageNumber = stageNumber
@@ -875,8 +875,8 @@ class Numerai(object):
             submit['probability_{}'.format(self.type)] = self.finalPrediction['real_data']
 
         # Saving prediction
-            submit.to_csv('../../../Datasets/Numerai/w{0}/submission{1}_{2}.csv'.format(week, submissionNumber, self.type), index = False)
-
+            # submit.to_csv('../../../Datasets/Numerai/w{0}/submission{1}_{2}.csv'.format(week, submissionNumber, self.type), index = False)
+            submit.to_csv("../../Data/submission{0}_{1}.csv".format(submissionNumber, self.type), index = False)
         # Automated submission through the numerai API
             pass
 
