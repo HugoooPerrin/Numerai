@@ -10,7 +10,6 @@ Main class designed to quickly evaluate different model architectures over Numer
 
 
 Next steps:
-    - NN models in the class and not in running (add "layers" argument to functions)
     - Feature engineering: autoencoder (learn representation of your data on different levels)
     - Function to compute feature importance (including new features) ?
     - Memory optimization (inter & feature only when computing)
@@ -22,6 +21,7 @@ Next steps:
 
 Author: Hugo Perrin
 """
+
 
 
 
@@ -52,15 +52,13 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
 
 # Deep learning
-try:
-    sys.path.append('../pytorch/')
-    from utils import trainNN, predictNN
-    import torch.utils.data as utils
-    import torch.optim as optim
-    import torch.nn as nn
-    import torch
-except:
-    pass
+
+sys.path.append('../pytorch/')
+from utils import trainNN, predictNN
+import torch.utils.data as utils
+import torch.optim as optim
+import torch.nn as nn
+import torch
 
 # Utils
 def diff(t_a, t_b):
@@ -103,11 +101,8 @@ class Numerai(object):
     def load_data(self, stageNumber, evaluate):
         print('\n---------------------------------------------')
         print('>> Loading data', end='...')
-        # Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(self.week))
-        # Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(self.week))
- 
-        Xtrain = pd.read_csv("../../Data/numerai_training_data.csv")
-        Xvalid = pd.read_csv("../../Data/numerai_tournament_data.csv")
+        Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(self.week))
+        Xvalid = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_tournament_data.csv".format(self.week))
 
         self.evaluate = evaluate
         self.stageNumber = stageNumber
@@ -293,10 +288,26 @@ class Numerai(object):
 #------------------------------------------- MODELS -------------------------------------------
 
 
-    def trainingNN(self, architecture, learningRate=0.0001, batch=64, epoch=5, 
+    def trainingNN(self, layers, dropout, learningRate=0.0001, batch=64, epoch=5, 
                    cvNumber=1, displayStep=1000, useGPU=True, evaluate=True):
 
         self.notYetNN_train = False
+
+    # Model
+        class NN(nn.Module):
+
+            def __init__(self):
+                super(NN, self).__init__()
+
+                self.linear = nn.Sequential(
+                    nn.Linear(layers[0], layers[1]),
+                    nn.ReLU(),
+                    nn.Dropout(dropout),
+                    nn.Linear(layers[1], 1))
+
+            def forward(self, x):
+                out = self.linear(x)
+                return out
         
     # Data
         self.firstStagePrediction = {}
@@ -344,8 +355,10 @@ class Numerai(object):
         XtrainNNData['nn'] = np.concatenate((XtrainNNData[1], XtrainNNData['test']), axis=0)
         YtrainNNData['nn'] = np.concatenate((YtrainNNData[1], YtrainNNData['test']), axis=0)
 
+    # Tuning hyperparameter
+
         if evaluate:
-        # Tuning hyperparameter
+
             cvScore = 0
 
             time = datetime.now()
@@ -383,7 +396,7 @@ class Numerai(object):
                                                            num_workers=8)
 
             # Model
-                net = architecture
+                net = NN()
 
             # Loss function
                 criterion = nn.BCEWithLogitsLoss()
@@ -427,7 +440,7 @@ class Numerai(object):
                                                               shuffle=False,
                                                               num_workers=8)
         # Model
-            net = architecture
+            net = NN()
 
         # Loss function
             criterion = nn.BCEWithLogitsLoss()
@@ -691,7 +704,7 @@ class Numerai(object):
                             self.compilation_data[dataset]['{}_{}'.format(feature, meta)] = self.compilation_data[dataset][feature].values * self.PCA[dataset][meta].values
             else:
                 for dataset in self.compilation_data:
-                   self.compilation_data[dataset] = pd.concat([self.compilation_data[dataset].reset_index(drop=True), 
+                    self.compilation_data[dataset] = pd.concat([self.compilation_data[dataset].reset_index(drop=True), 
                                                                 self.PCA[dataset].reset_index(drop=True)], axis=1)
         else:
             pass
@@ -703,12 +716,11 @@ class Numerai(object):
             pass
 
 
-
 #----------------------------------------------------------------------------------------------
 #---------------------------------------- COMPILATION -----------------------------------------
 
 
-    def compile(self, nCores=-1, neuralNetworkCompiler=False, architecture=None, learningRate=0.0001, 
+    def compile(self, nCores, neuralNetworkCompiler=False, hidden=None, dropout=0.5, learningRate=0.0001, 
                 batch=64, epoch=2, cvNumber=1, displayStep=10000, useGPU=False):
 
     # Defining score
@@ -726,6 +738,24 @@ class Numerai(object):
             print('\n---------------------------------------------')
             print('>> Processing compilation [Neural Network]\n')
 
+        # Model
+            class NN(nn.Module):
+
+                def __init__(self):
+                    super(NN, self).__init__()
+
+                    self.linear = nn.Sequential(
+                        nn.Linear(self.compilation_data[self.datasetToUse].shape[1], hidden),
+                        nn.ReLU(),
+                        nn.Dropout(dropout),
+                        nn.Linear(hidden, 1))
+
+                def forward(self, x):
+                    out = self.linear(x)
+                    return out
+
+        # data
+
             if self.notYetNN_comp:
                 for dataset in self.compilation_data:
                     self.compilation_data[dataset] = np.array(self.compilation_data[dataset])
@@ -739,8 +769,9 @@ class Numerai(object):
                 del self.compilation_data['test']
                 self.notYetNN_comp = False
 
+        # Tuning hyperparameter
+
             if self.evaluate:
-            # Tuning hyperparameter
                 cvScore = 0
 
                 time = datetime.now()
@@ -777,7 +808,7 @@ class Numerai(object):
                                                                shuffle=False,
                                                                num_workers=8)
                 # Model
-                    net = architecture
+                    net = NN()
 
                 # Loss function
                     criterion = nn.BCEWithLogitsLoss()
@@ -801,6 +832,8 @@ class Numerai(object):
                 print("\nFinal valid log loss: %.5f\n" % cvScore)
                 print('\nTotal running time {}'.format(diff(datetime.now(), time)))
 
+        # Final model
+
             else:
                 time = datetime.now()
 
@@ -821,7 +854,7 @@ class Numerai(object):
                                                           shuffle=False,
                                                           num_workers=8)
             # Model
-                net = architecture
+                net = NN()
 
             # Loss function
                 criterion = nn.BCEWithLogitsLoss()
@@ -838,8 +871,11 @@ class Numerai(object):
                 self.finalPrediction['real_data'] = predictNN(net, real_loader, use_GPU=useGPU)
 
                 print('\nRunning time {}\n'.format(diff(datetime.now(), time)))
+
+    # Machine learning model
+
         else:
-            # Tuning
+
             for name, model, parameters, baggingSteps, nFeatures, stage in zip(self.modelNames, self.models, self.parameters, self.baggingSteps, self.nFeatures, self.stage):
                 
                 if stage == self.datasetToUse:                                                                                     ## There is normally only one model that fits here !!!!
@@ -847,14 +883,18 @@ class Numerai(object):
                     print('\n---------------------------------------------')
                     print('>> Processing compilation [{}]\n'.format(name))
 
+                # Tuning
+
                     gscv = GridSearchCV(model, parameters, scoring=score, n_jobs=nCores, cv=5)
                     gscv.fit(self.compilation_data[self.datasetToUse], self.Ytrain[self.datasetToUse])                        ## COMPILATION TRAINING ON SECOND STAGE PREDICTION OF XTRAIN3
                                                                                                                               ## IF THERE IS TWO STAGES, ELSE ON XTRAIN2
-                    # Final prediction
+                # Final prediction
+
                     for dataset in self.compilation_data:
                         self.finalPrediction[dataset]['final_prediction'] = gscv.predict_proba(self.compilation_data[dataset])[:,1]
 
             print('\nCompilation running time {}\n'.format(diff(datetime.now(), time)))
+
             if self.evaluate:
                 print('\nFinal test log loss : %.5f' %
                     (log_loss(self.Ytrain['test'], self.finalPrediction['test']['final_prediction'])))                        
@@ -875,8 +915,8 @@ class Numerai(object):
             submit['probability_{}'.format(self.type)] = self.finalPrediction['real_data']
 
         # Saving prediction
-            # submit.to_csv('../../../Datasets/Numerai/w{0}/submission{1}_{2}.csv'.format(week, submissionNumber, self.type), index = False)
-            submit.to_csv("../../Data/submission{0}_{1}.csv".format(submissionNumber, self.type), index = False)
+            submit.to_csv('../../../Datasets/Numerai/w{0}/submission{1}_{2}.csv'.format(week, submissionNumber, self.type), index = False)
+
         # Automated submission through the numerai API
             pass
 

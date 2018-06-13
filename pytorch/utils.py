@@ -1,5 +1,10 @@
 
 
+
+#=========================================================================================================
+#================================ MODULES
+
+
 from torch.autograd import Variable
 
 import numpy as np
@@ -8,8 +13,9 @@ from sklearn.metrics import log_loss
 from scipy.special import expit
 
 
-# --------------------------------------------------------------
-# --------------------------------------------------------------
+
+#=========================================================================================================
+#================================ NEURAL NETWORKS UTILS
 
 
 def trainNN(num_epoch, model, train_loader, optimizer, criterion, display_step=500, valid_loader=None, use_GPU=True):
@@ -33,6 +39,7 @@ def trainNN(num_epoch, model, train_loader, optimizer, criterion, display_step=5
 
             # Get the inputs (batch)
             inputs, labels = data
+
             # Wrap them in Variable
             if use_GPU is True:
                 inputs = Variable(inputs.cuda())
@@ -87,6 +94,7 @@ def trainNN(num_epoch, model, train_loader, optimizer, criterion, display_step=5
                           (epoch + 1, i + 1, running_loss / step_number, log_loss(target, prediction)))
                     running_loss = 0.0
                     step_number = 0
+
                 else:
                     print('Epoch: %d, step: %5d, training loss: %.5f' % 
                           (epoch + 1, i + 1, running_loss / step_number))
@@ -99,9 +107,7 @@ def predictNN(model, dataset_loader, use_GPU=True):
 
     model.eval()
 
-    concatenate = False                # Prediction by batch to optimize GPU memory use
-
-    # Get the inputs
+    # Get the inputs by batch to optimize GPU memory use
     for data in dataset_loader:
 
         if len(data) == 2:
@@ -109,7 +115,7 @@ def predictNN(model, dataset_loader, use_GPU=True):
         else:
             inputs = data              # with or without target (validation or test)
 
-        # Wrap them in Variable
+    # Wrap them in Variable
         if use_GPU is True:
             inputs = Variable(inputs.cuda(), requires_grad=False)
         else:
@@ -119,11 +125,14 @@ def predictNN(model, dataset_loader, use_GPU=True):
 
         del inputs
 
+    # probabilities
         if use_GPU:
-            prediction = outputs.data.cpu().numpy() # probabilities      
+            prediction = outputs.data.cpu().numpy()     
         else:
-            prediction = outputs.data.numpy() # probabilities      
+            prediction = outputs.data.numpy()
 
+    # Prediction 
+        concatenate = False
         if concatenate:
             full_prediction = np.concatenate((full_prediction, prediction), axis=0)
         else:
