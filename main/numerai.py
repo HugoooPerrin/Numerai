@@ -10,8 +10,8 @@ Main class designed to quickly evaluate different model architectures over Numer
 
 
 Next steps:
+    - NN models in the class and not in running (add "layers" argument to functions)
     - Feature engineering: autoencoder (learn representation of your data on different levels)
-    - Feature engineering: PCA (keep first vectors)
     - Function to compute feature importance (including new features) ?
     - Memory optimization (inter & feature only when computing)
     - Add more randomness (random feature engineering ?)
