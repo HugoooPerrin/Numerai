@@ -10,7 +10,7 @@ Main class designed to quickly evaluate different model architectures over Numer
 
 
 Next steps:
-    - Feature engineering: autoencoder (learn representation of your data on different levels)
+    - Add noise for autoencoder input (prevent from overfitting)
     - Function to compute feature importance (including new features) ?
     - Memory optimization (inter & feature only when computing)
     - Add more randomness (random feature engineering ?)
@@ -46,7 +46,7 @@ from sklearn import cluster
 
 # Metrics
 from sklearn.metrics import make_scorer
-from sklearn.metrics import log_loss
+from sklearn.metrics import log_loss, mean_squared_error
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
@@ -94,8 +94,10 @@ class Numerai(object):
         self.notYetNN_train = True
 
 
+
 #----------------------------------------------------------------------------------------------
 #-------------------------------------------- DATA --------------------------------------------
+
 
 
     def load_data(self, stageNumber, evaluate):
@@ -221,12 +223,13 @@ class Numerai(object):
                                3: Ytrain3}
 
 
+
 #----------------------------------------------------------------------------------------------
 #------------------------------------- FEATURE ENGINEERING ------------------------------------
 
 
-    def kmeansTrick(self, k, stage, interaction):
 
+    def kmeansTrick(self, k, stage, interaction):
 
         print('\n---------------------------------------------')
         print('>> Processing Kmeans ------\n')
@@ -279,13 +282,200 @@ class Numerai(object):
 
 
 
-    def autoEncoder(self, n, stage, interaction,
-                    architecture, learningRate=0.0001, batch=64, epoch=5, cvNumber=1, displayStep=1000, useGPU=True, evaluate=True):
-        pass
+    def autoEncoder(self, stage, interaction,
+                    layers, learningRate=0.0001, batch=64, epoch=5, cvNumber=1, displayStep=1000, useGPU=True, evaluate=True):
+
+        print('\n---------------------------------------------')
+        print('>> Processing AutoEncoder ------\n')
+
+        self.autoencoderStage = stage
+        self.autoencoderInteraction = interaction
+
+    # Model depth
+        if len(layers) == 3:
+
+            class Autoencoder(nn.Module):
+
+                def __init__(self):
+                    super(Autoencoder, self).__init__()
+
+                    self.encoder = nn.Sequential(
+                                            nn.Linear(50, layers[0]),
+                                            nn.Tanh(),
+                                            nn.Dropout(dropout),
+                                            nn.Linear(layers[0], layers[1]))
+
+                    self.decoder = nn.Sequential(
+                                            nn.Tanh(),
+                                            nn.Dropout(dropout),
+                                            nn.Linear(layers[1], layers[2]),
+                                            nn.Tanh(),
+                                            nn.Dropout(dropout),
+                                            nn.Linear(layers[2], 50))
+
+                def forward(self, x):
+                    
+                    encoded = self.encoder(x)
+                    out = self.decoder(encoded)
+
+                    return encoded, out
+
+        elif len(layers) == 1:
+
+            class Autoencoder(nn.Module):
+
+                def __init__(self):
+                    super(Autoencoder, self).__init__()
+
+                    self.encoder = nn.Sequential(
+                                            nn.Linear(50, layers[0]))
+
+                    self.decoder = nn.Sequential(
+                                            nn.Tanh(),
+                                            nn.Dropout(dropout),
+                                            nn.Linear(layers[0], 50))
+
+                def forward(self, x):
+                    
+                    encoded = self.encoder(x)
+                    out = self.decoder(encoded)
+
+                    return encoded, out
+
+    # Data
+        XtrainNNData = {}
+        for dataset in self.Xtrain:
+            if evaluate & dataset > 1:
+                break  # For training only 1, test and valid are needed
+            XtrainNNData[dataset] = deepcopy(self.Xtrain[dataset])
+            XtrainNNData[dataset] = np.array(XtrainNNData[dataset])
+
+        if self.evaluate:
+            XtrainNNData['nn'] = np.concatenate((XtrainNNData[1], XtrainNNData['test']), axis=0)
+        else:
+            pass # Normally that never happens (self.evaluate == False & evaluate == True) so no use of defining another 'nn' dataset
+
+    # Tuning hyperparameter
+
+        if evaluate:
+
+        # Optimizing memory usage
+            del XtrainNNData[1], XtrainNNData['test']
+
+            cvScore = 0
+
+            time = datetime.now()
+
+            for i in range(cvNumber):
+                print('\nLoop number {}'.format(i+1))
+
+                Xtrain, Xvalid = train_test_split(XtrainNNData['nn'], test_size=0.25)  # Input == target 
+
+            # Tensor
+
+                train_dataset = torch.utils.data.TensorDataset(torch.FloatTensor(Xtrain), 
+                                                               torch.FloatTensor(Xtrain))
+
+                validation_dataset = torch.utils.data.TensorDataset(torch.FloatTensor(Xvalid), 
+                                                                    torch.FloatTensor(Xvalid))
+
+                valid_dataset = torch.FloatTensor(XtrainNNData['valid'])
+
+            # Loader
+
+                train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                                           batch_size=batch,
+                                                           shuffle=True,
+                                                           num_workers=8)
+
+                validation_loader = torch.utils.data.DataLoader(dataset=validation_dataset,
+                                                                batch_size=batch,
+                                                                shuffle=False, 
+                                                                num_workers=8)
+
+                valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset,
+                                                           batch_size=batch,
+                                                           shuffle=False,
+                                                           num_workers=8)
+
+            # Model
+                net = Autoencoder()
+
+            # Loss function
+                criterion = nn.MSELoss()
+                
+            # Optimization algorithm
+                optimizer = optim.RMSprop(net.parameters(), lr=learningRate, alpha=0.99, eps=1e-08, 
+                                          weight_decay=0, momentum=0.9)
+
+            # Training model
+                train_autoencoder(epoch, net, train_loader, optimizer, criterion, display_step=displayStep, 
+                                  valid_loader=validation_loader, use_GPU=useGPU)
+                
+            # Performance measuring
+                validPrediction = pd.DataFrame(predict_autoencoder(net, valid_loader, use_GPU=useGPU))
+                score = mean_squared_error(XtrainNNData['valid'], validPrediction)
+
+                cvScore += score*(1/cvNumber)
+
+            print("\nValid log loss: %.5f\n" % cvScore)
+
+    # Getting encoding
+
+        else:
+
+            time = datetime.now()
+
+        # Tensor
+            train_dataset = torch.utils.data.TensorDataset(torch.FloatTensor(XtrainNNData[1]),
+                                                           torch.FloatTensor(XtrainNNData[1]))
+
+            tensor = {}
+            for dataset in self.Xtrain: 
+                tensor[dataset] = torch.FloatTensor(XtrainNNData[dataset])
+
+        # Loader
+            train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                                       batch_size=batch,
+                                                       shuffle=True,
+                                                       num_workers=8)
+            loader = {}
+            for dataset in self.Xtrain: 
+                loader[dataset] = torch.utils.data.DataLoader(dataset=tensor[dataset],
+                                                              batch_size=batch,
+                                                              shuffle=False,
+                                                              num_workers=8)
+        # Model
+            net = Autoencoder()
+
+        # Loss function
+            criterion = nn.MSELoss()
+            
+        # Optimization algorithm
+            optimizer = optim.RMSprop(net.parameters(), lr=learningRate, alpha=0.99, eps=1e-08, 
+                                      weight_decay=0, momentum=0.9)
+
+        # Training model
+            train_autoencoder(epoch, net, train_loader, optimizer, criterion, display_step=displayStep, 
+                              valid_loader=None, use_GPU=useGPU)
+
+        # Predicting
+            print('Generating encoding features', end='...')
+            self.autoencoderFeature = {}
+            for dataset in self.Xtrain:
+                self.autoencoderFeature[dataset] = get_encoded(net, loader[dataset], use_GPU=use_GPU)
+                self.autoencoderFeature[dataset] = pd.DataFrame(self.autoencoderFeature[dataset], columns=['encoded{}'.format(i) for i in range(n_components)])
+            print('done')
+
+        del XtrainNNData
+
+        print('Running time {}\n'.format(diff(datetime.now(), time)))
+
 
 
 #----------------------------------------------------------------------------------------------
 #------------------------------------------- MODELS -------------------------------------------
+
 
 
     def trainingNN(self, layers, dropout, learningRate=0.0001, batch=64, epoch=5, 
@@ -301,7 +491,7 @@ class Numerai(object):
 
                 self.linear = nn.Sequential(
                     nn.Linear(layers[0], layers[1]),
-                    nn.ReLU(),
+                    nn.Tanh(),
                     nn.Dropout(dropout),
                     nn.Linear(layers[1], 1))
 
@@ -320,6 +510,9 @@ class Numerai(object):
         XtrainNNData = {}
         YtrainNNData = {}
         for dataset in self.Xtrain:
+
+            if evaluate & dataset > 1:
+                break  # For training only 1, test and valid are needed
 
             XtrainNNData[dataset] = deepcopy(self.Xtrain[dataset])
 
@@ -345,6 +538,17 @@ class Numerai(object):
                     XtrainNNData[dataset] = pd.concat([XtrainNNData[dataset].reset_index(drop=True),
                                                        self.PCA[dataset].reset_index(drop=True)], axis=1)
 
+        # Autoencoding --------------
+
+            if 1 in self.autoencoderStage:
+                if self.autoencoderInteraction:
+                    for feature in self.Xtrain[dataset].columns:
+                        for meta in self.autoencoderFeature[dataset].columns:
+                            XtrainNNData[dataset]['{}_{}'.format(feature, meta)] = self.Xtrain[dataset][feature].values * self.autoencoderFeature[dataset][meta].values
+                else:
+                    XtrainNNData[dataset] = pd.concat([XtrainNNData[dataset].reset_index(drop=True),
+                                                       self.autoencoderFeature[dataset].reset_index(drop=True)], axis=1)
+
         # To array
         for dataset in self.Xtrain:
             XtrainNNData[dataset] = np.array(XtrainNNData[dataset])
@@ -352,12 +556,18 @@ class Numerai(object):
                 YtrainNNData[dataset] = np.array(self.Ytrain[dataset].values)
                 YtrainNNData[dataset] = YtrainNNData[dataset].reshape(YtrainNNData[dataset].shape[0], 1)
 
-        XtrainNNData['nn'] = np.concatenate((XtrainNNData[1], XtrainNNData['test']), axis=0)
-        YtrainNNData['nn'] = np.concatenate((YtrainNNData[1], YtrainNNData['test']), axis=0)
+        if self.evaluate:
+            XtrainNNData['nn'] = np.concatenate((XtrainNNData[1], XtrainNNData['test']), axis=0)
+            YtrainNNData['nn'] = np.concatenate((YtrainNNData[1], YtrainNNData['test']), axis=0)
+        else:
+            pass # Normally that never happens (self.evaluate == False & evaluate == True) so no use of defining another 'nn' dataset
 
     # Tuning hyperparameter
 
         if evaluate:
+
+            # Optimizing memory usage
+            del XtrainNNData[1], XtrainNNData['test'], YtrainNNData[1], YtrainNNData['test']
 
             cvScore = 0
 
@@ -418,6 +628,7 @@ class Numerai(object):
             print("\nValid log loss: %.5f\n" % cvScore)
 
         else:
+
             time = datetime.now()
 
         # Tensor
@@ -551,6 +762,20 @@ class Numerai(object):
                     else:
                         pass
 
+                # Autoencoder
+                    if 1 in self.autoencoderStage:
+                        if self.autoencoderInteraction:
+                            for dataset in self.Xtrain:
+                                for feature in columns:
+                                    for meta in self.autoencoderFeature[dataset].columns:
+                                        inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature].values * self.autoencoderFeature[dataset][meta].values
+                        else:
+                            for dataset in self.Xtrain:
+                                inter[dataset] = pd.concat([inter[dataset].reset_index(drop=True), 
+                                                            self.autoencoderFeature[dataset].reset_index(drop=True)], axis=1)
+                    else:
+                        pass
+
                 # Keeping only processed features
                     if False:
                         for dataset in self.Xtrain:
@@ -636,6 +861,20 @@ class Numerai(object):
                         else:
                             pass
 
+                    # Autoencoder
+                        if 1 in self.autoencoderStage:
+                            if self.autoencoderInteraction:
+                                for dataset in self.Xtrain:
+                                    for feature in columns:
+                                        for meta in self.autoencoderFeature[dataset].columns:
+                                            inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature].values * self.autoencoderFeature[dataset][meta].values
+                            else:
+                                for dataset in self.Xtrain:
+                                    inter[dataset] = pd.concat([inter[dataset].reset_index(drop=True), 
+                                                                self.autoencoderFeature[dataset].reset_index(drop=True)], axis=1)
+                        else:
+                            pass
+
                     # Keeping only processed features
                         if False:
                             for dataset in self.Xtrain:
@@ -715,9 +954,31 @@ class Numerai(object):
         except:
             pass
 
+    # Autoencoder
+        if self.datasetToUse in self.autoencoderStage:
+            if self.autoencoderInteraction:
+                for dataset in self.compilation_data:
+                    for feature in columns:
+                        for meta in self.autoencoderFeature[dataset].columns:
+                            self.compilation_data[dataset]['{}_{}'.format(feature, meta)] = self.compilation_data[dataset][feature].values * self.autoencoderFeature[dataset][meta].values
+            else:
+                for dataset in self.compilation_data:
+                    self.compilation_data[dataset] = pd.concat([self.compilation_data[dataset].reset_index(drop=True), 
+                                                                self.autoencoderFeature[dataset].reset_index(drop=True)], axis=1)
+        else:
+            pass
+
+    # Memory efficiency
+        try:
+            del self.autoencoderFeature
+        except:
+            pass
+
+
 
 #----------------------------------------------------------------------------------------------
 #---------------------------------------- COMPILATION -----------------------------------------
+
 
 
     def compile(self, nCores, neuralNetworkCompiler=False, hidden=None, dropout=0.5, learningRate=0.0001, 
@@ -746,7 +1007,7 @@ class Numerai(object):
 
                     self.linear = nn.Sequential(
                         nn.Linear(self.compilation_data[self.datasetToUse].shape[1], hidden),
-                        nn.ReLU(),
+                        nn.Tanh(),
                         nn.Dropout(dropout),
                         nn.Linear(hidden, 1))
 
@@ -772,6 +1033,7 @@ class Numerai(object):
         # Tuning hyperparameter
 
             if self.evaluate:
+
                 cvScore = 0
 
                 time = datetime.now()
@@ -902,8 +1164,10 @@ class Numerai(object):
                     (log_loss(self.Ytrain['valid'], self.finalPrediction['valid']['final_prediction'])))
 
 
+
 #----------------------------------------------------------------------------------------------
 #---------------------------------------- SUBMISSION ------------------------------------------
+
 
 
     def submit(self, submissionNumber, week):
