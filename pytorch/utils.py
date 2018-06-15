@@ -9,7 +9,7 @@ from torch.autograd import Variable
 
 import numpy as np
 
-from sklearn.metrics import log_loss
+from sklearn.metrics import log_loss, mean_squared_error
 from scipy.special import expit
 
 
@@ -179,6 +179,8 @@ def predictNN(model, dataset_loader, use_GPU=True):
 
     model.eval()
 
+    concatenate = False
+
     # Get the inputs by batch to optimize GPU memory use
     for data in dataset_loader:
 
@@ -204,7 +206,6 @@ def predictNN(model, dataset_loader, use_GPU=True):
             prediction = outputs.data.numpy()
 
     # Prediction 
-        concatenate = False
         if concatenate:
             full_prediction = np.concatenate((full_prediction, prediction), axis=0)
         else:

@@ -55,6 +55,7 @@ from sklearn.model_selection import train_test_split
 
 sys.path.append('../pytorch/')
 from utils import trainNN, predictNN
+from utils import train_autoencoder, predict_autoencoder, get_encoded
 import torch.utils.data as utils
 import torch.optim as optim
 import torch.nn as nn
@@ -80,8 +81,10 @@ class Numerai(object):
 
         self.week = week
         self.type = name
+
         self.kmeanStage = []
         self.pcaStage = []
+        self.autoencoderStage = []
 
         self.modelNames = []
         self.models = []
@@ -282,17 +285,20 @@ class Numerai(object):
 
 
 
-    def autoEncoder(self, stage, interaction,
-                    layers, learningRate=0.0001, batch=64, epoch=5, cvNumber=1, displayStep=1000, useGPU=True, evaluate=True):
+    def autoEncoder(self, stage, interaction, 
+                    layers, dropout, learningRate=0.0001, batch=64, epoch=5, 
+                    cvNumber=1, displayStep=1000, useGPU=True, evaluate=True):
 
         print('\n---------------------------------------------')
-        print('>> Processing AutoEncoder ------\n')
+        print('>> Processing AutoEncoder ------')
 
         self.autoencoderStage = stage
         self.autoencoderInteraction = interaction
 
     # Model depth
         if len(layers) == 3:
+
+            encoding_size = layers[1]
 
             class Autoencoder(nn.Module):
 
@@ -303,12 +309,12 @@ class Numerai(object):
                                             nn.Linear(50, layers[0]),
                                             nn.Tanh(),
                                             nn.Dropout(dropout),
-                                            nn.Linear(layers[0], layers[1]))
+                                            nn.Linear(layers[0], encoding_size))
 
                     self.decoder = nn.Sequential(
                                             nn.Tanh(),
                                             nn.Dropout(dropout),
-                                            nn.Linear(layers[1], layers[2]),
+                                            nn.Linear(encoding_size, layers[2]),
                                             nn.Tanh(),
                                             nn.Dropout(dropout),
                                             nn.Linear(layers[2], 50))
@@ -322,18 +328,20 @@ class Numerai(object):
 
         elif len(layers) == 1:
 
+            encoding_size = layers[0]
+
             class Autoencoder(nn.Module):
 
                 def __init__(self):
                     super(Autoencoder, self).__init__()
 
                     self.encoder = nn.Sequential(
-                                            nn.Linear(50, layers[0]))
+                                            nn.Linear(50, encoding_size))
 
                     self.decoder = nn.Sequential(
                                             nn.Tanh(),
                                             nn.Dropout(dropout),
-                                            nn.Linear(layers[0], 50))
+                                            nn.Linear(encoding_size, 50))
 
                 def forward(self, x):
                     
@@ -345,10 +353,11 @@ class Numerai(object):
     # Data
         XtrainNNData = {}
         for dataset in self.Xtrain:
-            if evaluate & dataset > 1:
-                break  # For training only 1, test and valid are needed
-            XtrainNNData[dataset] = deepcopy(self.Xtrain[dataset])
-            XtrainNNData[dataset] = np.array(XtrainNNData[dataset])
+            if evaluate & (dataset in [2,3]):
+                pass  # For training only 1, test and valid are needed
+            else:
+                XtrainNNData[dataset] = deepcopy(self.Xtrain[dataset])
+                XtrainNNData[dataset] = np.array(XtrainNNData[dataset])
 
         if self.evaluate:
             XtrainNNData['nn'] = np.concatenate((XtrainNNData[1], XtrainNNData['test']), axis=0)
@@ -460,12 +469,12 @@ class Numerai(object):
                               valid_loader=None, use_GPU=useGPU)
 
         # Predicting
-            print('Generating encoding features', end='...')
+            print('\nGenerating encodied features', end='...')
             self.autoencoderFeature = {}
             for dataset in self.Xtrain:
-                self.autoencoderFeature[dataset] = get_encoded(net, loader[dataset], use_GPU=use_GPU)
-                self.autoencoderFeature[dataset] = pd.DataFrame(self.autoencoderFeature[dataset], columns=['encoded{}'.format(i) for i in range(n_components)])
-            print('done')
+                self.autoencoderFeature[dataset] = get_encoded(net, loader[dataset], use_GPU=useGPU)
+                self.autoencoderFeature[dataset] = pd.DataFrame(self.autoencoderFeature[dataset], columns=['encoded{}'.format(i) for i in range(encoding_size)])
+            print('done\n')
 
         del XtrainNNData
 
@@ -505,56 +514,57 @@ class Numerai(object):
             self.firstStagePrediction[dataset] = pd.DataFrame()
             
         print('\n---------------------------------------------')
-        print('>> Processing Neural Network ------\n')
+        print('>> Processing Neural Network ------')
 
         XtrainNNData = {}
         YtrainNNData = {}
         for dataset in self.Xtrain:
 
-            if evaluate & dataset > 1:
-                break  # For training only 1, test and valid are needed
+            if evaluate & (dataset in [2,3]):
+                pass  # For training only 1, test and valid are needed
+            else:
 
-            XtrainNNData[dataset] = deepcopy(self.Xtrain[dataset])
+                XtrainNNData[dataset] = deepcopy(self.Xtrain[dataset])
 
-        # Kmeans trick ------------ 
+            # Kmeans trick ------------ 
 
-            if 1 in self.kmeanStage:
-                if self.kmeansInteraction:
-                    for feature in self.Xtrain[dataset].columns:
-                        for meta in self.kmeanDist[dataset].columns:
-                            XtrainNNData[dataset]['{}_{}'.format(feature, meta)] = self.Xtrain[dataset][feature].values * self.kmeanDist[dataset][meta].values
-                else:
-                    XtrainNNData[dataset] = pd.concat([XtrainNNData[dataset].reset_index(drop=True),
-                                                       self.kmeanDist[dataset].reset_index(drop=True)], axis=1)
+                if 1 in self.kmeanStage:
+                    if self.kmeansInteraction:
+                        for feature in self.Xtrain[dataset].columns:
+                            for meta in self.kmeanDist[dataset].columns:
+                                XtrainNNData[dataset]['{}_{}'.format(feature, meta)] = self.Xtrain[dataset][feature].values * self.kmeanDist[dataset][meta].values
+                    else:
+                        XtrainNNData[dataset] = pd.concat([XtrainNNData[dataset].reset_index(drop=True),
+                                                           self.kmeanDist[dataset].reset_index(drop=True)], axis=1)
 
-        # Kernel PCA --------------
+            # Kernel PCA --------------
 
-            if 1 in self.pcaStage:
-                if self.pcaInteraction:
-                    for feature in self.Xtrain[dataset].columns:
-                        for meta in self.PCA[dataset].columns:
-                            XtrainNNData[dataset]['{}_{}'.format(feature, meta)] = self.Xtrain[dataset][feature].values * self.PCA[dataset][meta].values
-                else:
-                    XtrainNNData[dataset] = pd.concat([XtrainNNData[dataset].reset_index(drop=True),
-                                                       self.PCA[dataset].reset_index(drop=True)], axis=1)
+                if 1 in self.pcaStage:
+                    if self.pcaInteraction:
+                        for feature in self.Xtrain[dataset].columns:
+                            for meta in self.PCA[dataset].columns:
+                                XtrainNNData[dataset]['{}_{}'.format(feature, meta)] = self.Xtrain[dataset][feature].values * self.PCA[dataset][meta].values
+                    else:
+                        XtrainNNData[dataset] = pd.concat([XtrainNNData[dataset].reset_index(drop=True),
+                                                           self.PCA[dataset].reset_index(drop=True)], axis=1)
 
-        # Autoencoding --------------
+            # Autoencoding --------------
 
-            if 1 in self.autoencoderStage:
-                if self.autoencoderInteraction:
-                    for feature in self.Xtrain[dataset].columns:
-                        for meta in self.autoencoderFeature[dataset].columns:
-                            XtrainNNData[dataset]['{}_{}'.format(feature, meta)] = self.Xtrain[dataset][feature].values * self.autoencoderFeature[dataset][meta].values
-                else:
-                    XtrainNNData[dataset] = pd.concat([XtrainNNData[dataset].reset_index(drop=True),
-                                                       self.autoencoderFeature[dataset].reset_index(drop=True)], axis=1)
+                if 1 in self.autoencoderStage:
+                    if self.autoencoderInteraction:
+                        for feature in self.Xtrain[dataset].columns:
+                            for meta in self.autoencoderFeature[dataset].columns:
+                                XtrainNNData[dataset]['{}_{}'.format(feature, meta)] = self.Xtrain[dataset][feature].values * self.autoencoderFeature[dataset][meta].values
+                    else:
+                        XtrainNNData[dataset] = pd.concat([XtrainNNData[dataset].reset_index(drop=True),
+                                                           self.autoencoderFeature[dataset].reset_index(drop=True)], axis=1)
 
-        # To array
-        for dataset in self.Xtrain:
-            XtrainNNData[dataset] = np.array(XtrainNNData[dataset])
-            if dataset != 'real_data':
-                YtrainNNData[dataset] = np.array(self.Ytrain[dataset].values)
-                YtrainNNData[dataset] = YtrainNNData[dataset].reshape(YtrainNNData[dataset].shape[0], 1)
+            # To array 
+                XtrainNNData[dataset] = np.array(XtrainNNData[dataset])
+
+                if dataset != 'real_data':
+                    YtrainNNData[dataset] = np.array(self.Ytrain[dataset].values)
+                    YtrainNNData[dataset] = YtrainNNData[dataset].reshape(YtrainNNData[dataset].shape[0], 1)
 
         if self.evaluate:
             XtrainNNData['nn'] = np.concatenate((XtrainNNData[1], XtrainNNData['test']), axis=0)
@@ -621,7 +631,7 @@ class Numerai(object):
                 
             # Performance measuring
                 validPrediction = predictNN(net, valid_loader, use_GPU=useGPU)
-                score = log_loss(self.Ytrain['valid'], validPrediction)
+                score = log_loss(YtrainNNData['valid'], validPrediction)
 
                 cvScore += score*(1/cvNumber)
 
@@ -689,7 +699,7 @@ class Numerai(object):
 
 
 
-    def training(self, nCores=-1, models = models, stageNumber=1, interaction=None):
+    def training(self, nCores=-1, models = models):
 
     # Loading models
         self._add_model(models)
@@ -802,12 +812,12 @@ class Numerai(object):
 
     # Second stage
 
-        if stageNumber == 2:
+        if self.stageNumber == 2:
 
             print('\n\n---------------------------------------------')
             print('>> Processing second stage')
 
-            features = [name for name in firstStagePrediction[1].columns]
+            features = [name for name in firstStagePrediction[2].columns]
             time1 = datetime.now()
 
             secondStagePrediction = {}
@@ -895,7 +905,7 @@ class Numerai(object):
                             print('log loss : %.5f\n' %
                                 (log_loss(self.Ytrain['test'], secondStagePrediction['test']['{}_prediction_{}'.format(name,step+1)])))
 
-            del self.Xtrain[2], self.Ytrain[2], firstStagePrediction, secondStagePrediction[1], secondStagePrediction[2]
+            del self.Xtrain[2], self.Ytrain[2], firstStagePrediction, secondStagePrediction[2]
 
             print('Second stage running time {}'.format(diff(datetime.now(), time1)))
 
@@ -903,11 +913,11 @@ class Numerai(object):
         del self.Xtrain
 
     # For compilation
-        if stageNumber == 1:
+        if self.stageNumber == 1:
             self.compilation_data = firstStagePrediction
             del firstStagePrediction
             self.datasetToUse = 2
-        elif stageNumber == 2:
+        elif self.stageNumber == 2:
             self.compilation_data = secondStagePrediction
             del secondStagePrediction
             self.datasetToUse = 3
