@@ -11,10 +11,9 @@ Main class designed to quickly evaluate different model architectures over Numer
 
 Next steps:
     - Add noise for autoencoder input (prevent from overfitting)
-    - Function to compute feature importance (including new features) ?
     - Memory optimization (inter & feature only when computing)
     - Add more randomness (random feature engineering ?)
-    - Using era ?
+    - Using era (cv only by era, add era info on all rows)
     - hardcore EDA
 
 
