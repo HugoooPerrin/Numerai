@@ -27,9 +27,9 @@ from architecture import models
 
 if __name__ == '__main__':
 
-    names = ['bernie', 'jordan', 'ken', 'elizabeth', 'charles']
+    names = ['bernie', 'jordan', 'elizabeth', 'ken', 'charles']
 
-    for name in ['ken', 'charles']: #names:
+    for name in ['bernie', 'jordan']: #names:
 
         print('\n----------------------------  {}  ----------------------------'.format(name.upper()))
 
@@ -47,11 +47,11 @@ if __name__ == '__main__':
     #================================ 2. FEATURE ENGINEERING
 
 
-        stacking.kmeansTrick(k=15, stage=[2], interaction=False)
-        stacking.PCA(n_components=5, stage=[1, 2], interaction=False)
+        # stacking.kmeansTrick(k=10, stage=[1], interaction=False)
+        stacking.PCA(n_components=5, stage=[2], interaction=False)
         # stacking.meanEncoding()
         stacking.autoEncoder(stage=[1], interaction=False,
-                             layers=[25, 10, 25], dropout=0.6, learningRate=0.00002, batch=64, epoch=4,
+                             layers=[25, 5, 25], dropout=0.6, learningRate=0.00002, batch=64, epoch=4,
                              cvNumber=3, displayStep=500, useGPU=True, evaluate=False)
 
 
@@ -64,7 +64,7 @@ if __name__ == '__main__':
 
 
     ## DEEP LEARNING
-        stacking.trainingNN(layers=[65,20], dropout=0.6, learningRate=0.000008, batch=64, epoch=5,
+        stacking.trainingNN(layers=[55,20], dropout=0.6, learningRate=0.000008, batch=64, epoch=5,
                             cvNumber=3, displayStep=500, useGPU=useGPU, evaluate=False)
 
 
