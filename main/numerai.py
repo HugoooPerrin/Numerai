@@ -10,6 +10,12 @@ Main class designed to quickly evaluate different model architectures over Numer
 
 
 Next steps:
+    - KNN feature engineering (like mean target of nearest 5, 25, 50, 100 neighbors,
+                                    mean distance to 10 closest neighbors,
+                                    mean distance to 10 closest neighbors with target 1,
+                                    mean distance to 10 closest neighbors with target 0)
+    - NMF (Non-negative matrix factorization) instead of PCA: assumed to be better for tree-based models
+    - Feature interaction: compute all interaction and then select more important by fitting a randomForest !
     - Add noise for autoencoder input (prevent from overfitting)
     - Memory optimization (inter & feature only when computing)
     - Add more randomness (random feature engineering ?)
@@ -39,9 +45,10 @@ from dateutil.relativedelta import relativedelta
 from copy import deepcopy
 
 # Preprocessing
-from scipy.spatial.distance import euclidean
 from sklearn.decomposition import PCA
 from sklearn import cluster
+from knnFeatureExtractor import compute_features, KnnFeatureExtractor
+
 
 # Metrics
 from sklearn.metrics import make_scorer
@@ -51,7 +58,6 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
 
 # Deep learning
-
 sys.path.append('../pytorch/')
 from utils import trainNN, predictNN
 from utils import train_autoencoder, predict_autoencoder, get_encoded
@@ -68,6 +74,7 @@ def diff(t_a, t_b):
 # Architecture
 from architecture import models
 
+
 #=========================================================================================================
 #============================================ NUMERAI CLASS ==============================================
 
@@ -82,6 +89,7 @@ class Numerai(object):
         self.type = name
 
         self.kmeanStage = []
+        self.knnStage = []
         self.pcaStage = []
         self.autoencoderStage = []
 
@@ -255,6 +263,11 @@ class Numerai(object):
 
 
 
+    def knnDistances(self, k, stage, interaction):
+        pass
+
+
+
     def PCA(self, n_components, stage, interaction):
 
         print('\n---------------------------------------------')
@@ -276,11 +289,6 @@ class Numerai(object):
             self.PCA[dataset] = model.transform(self.Xtrain[dataset])
             self.PCA[dataset] = pd.DataFrame(self.PCA[dataset], columns=['PCA{}'.format(i) for i in range(n_components)])
         print('done')
-
-
-
-    def meanEncoding(self, n, stage, interaction):
-        pass
 
 
 
