@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
     ## Distance based features
         stacking.kmeansTrick(k=10, stage=[1], interaction=False)
-        stacking.knnDistances(k=[10, 50], stage=[1], interaction=False)
+        stacking.knnDistances(stage=[1], interaction=False)
 
     ## Dimensionality reduction based features
         stacking.PCA(n_components=5, stage=[1], interaction=False)

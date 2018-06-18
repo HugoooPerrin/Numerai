@@ -47,8 +47,6 @@ from copy import deepcopy
 # Preprocessing
 from sklearn.decomposition import PCA
 from sklearn import cluster
-from knnFeatureExtractor import compute_features, KnnFeatureExtractor
-
 
 # Metrics
 from sklearn.metrics import make_scorer
@@ -263,7 +261,10 @@ class Numerai(object):
 
 
 
-    def knnDistances(self, k, stage, interaction):
+    def knnDistances(self, stage, interaction):
+        """
+        Load data computed with R script and assign it to the good dataset
+        """
         pass
 
 
