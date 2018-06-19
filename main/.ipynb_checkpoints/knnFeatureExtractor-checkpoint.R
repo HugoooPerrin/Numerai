@@ -19,7 +19,6 @@ library(fastknn)
 "https://github.com/davpinto/fastknn"
 "https://sites.google.com/site/aslugsguidetopython/data-analysis/pandas/calling-r-from-python"
 
-
 #---------------------------------------------------------
 #-------------------- 1. DATA ----------------------------
 
@@ -84,7 +83,7 @@ for (name in names) {
   
   KNNfeatures = knnExtract(xtr = Xtrain, ytr = Ytrain, xte = train, k = k, nthread = nCores)
   
-  KNNfeaturesTrain = data.table(KNNfeatures$new.te)[, .(knn10, knn25, knn50, knn100, knn110, knn125, knn150, knn200)]
+  KNNfeaturesTrain = data.table(KNNfeatures$new.te)[, .(knn25, knn50, knn100, knn125, knn150, knn200)]
   
   fwrite(KNNfeaturesTrain, 
     paste0("/home/hugoperrin/Bureau/Datasets/Numerai/w",week,"/knnFeatures_train_",name,".csv"), 
@@ -102,9 +101,9 @@ for (name in names) {
   
   KNNfeatures = knnExtract(xtr = Xtrain, ytr = Ytrain, xte = tournament, k = k, nthread = nCores)
   
-  KNNfeaturesTournament = data.table(KNNfeatures$new.te)[, .(knn10, knn25, knn50, knn100, knn110, knn125, knn150, knn200)]
+  KNNfeaturesTournament = data.table(KNNfeatures$new.te)[, .(knn25, knn50, knn100, knn125, knn150, knn200)]
   
-  fwrite(KNNfeaturesTournament,
+  fwrite(KNNfeaturesTournament, 
     paste0("/home/hugoperrin/Bureau/Datasets/Numerai/w",week,"/knnFeatures_tournament_",name,".csv"),
     nThread=8)
   

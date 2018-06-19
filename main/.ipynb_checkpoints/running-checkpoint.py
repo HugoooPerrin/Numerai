@@ -49,20 +49,20 @@ if __name__ == '__main__':
 
     ## Distance based features
         # stacking.kmeansTrick(k=10, stage=[1], interaction=False)
-        stacking.knnDistances(name=name, stage=[2], interaction=False) # X features precomputed
+        stacking.knnDistances(name=name, stage=[2], interaction=False) # 6 features precomputed / may risk overfitting on stage 1
 
     ## Dimensionality reduction based features
-        stacking.PCA(n_components=5, stage=[1], interaction=False)
-        stacking.autoEncoder(stage=[1], interaction=False,
-                             layers=[25, 10, 25], dropout=0.6, learningRate=0.00002, batch=64, epoch=4,
-                             cvNumber=3, displayStep=500, useGPU=True, evaluate=False)
+        stacking.PCA(n_components=2, stage=[1], interaction=True)
+        # stacking.autoEncoder(stage=[1], interaction=False,
+        #                      layers=[25, 10, 25], dropout=0.6, learningRate=0.00002, batch=64, epoch=4,
+        #                      cvNumber=3, displayStep=500, useGPU=True, evaluate=False)
 
 
     #=========================================================================================================
     #================================ 3. TRAINING MODEL
 
     ## Hardware
-        nCores = 8
+        nCores = 6
         useGPU = True
 
 

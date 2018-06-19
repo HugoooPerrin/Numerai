@@ -132,6 +132,9 @@ class Numerai(object):
         if knn:
             ids = pd.read_csv("../../../Datasets/Numerai/w{0}/train_ids_{1}.csv".format(self.week, self.type))
 
+            ########### TO DELETE
+            ids['x'] = ids['x'] - 1
+
             # Saving 
             knnXtrainingPoints = Xtrain.iloc[ids['x'].values]
             knnYtrainingPoints = Ytrain.iloc[ids['x'].values]
