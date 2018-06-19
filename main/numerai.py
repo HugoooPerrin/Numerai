@@ -10,10 +10,8 @@ Main class designed to quickly evaluate different model architectures over Numer
 
 
 Next steps:
-    - KNN feature engineering (like mean target of nearest 5, 25, 50, 100 neighbors,
-                                    mean distance to 10 closest neighbors,
-                                    mean distance to 10 closest neighbors with target 1,
-                                    mean distance to 10 closest neighbors with target 0)
+    - Add knn prediction from R or redundant ?
+    - Add a stageNumber = 0 option
     - NMF (Non-negative matrix factorization) instead of PCA: assumed to be better for tree-based models
     - Feature interaction: compute all interaction and then select more important by fitting a randomForest !
     - Add noise for autoencoder input (prevent from overfitting)
@@ -108,7 +106,8 @@ class Numerai(object):
 
 
 
-    def load_data(self, stageNumber, evaluate):
+    def load_data(self, stageNumber, evaluate, knn=False):
+
         print('\n---------------------------------------------')
         print('>> Loading data', end='...')
         Xtrain = pd.read_csv("../../../Datasets/Numerai/w{}/numerai_training_data.csv".format(self.week))
@@ -122,18 +121,53 @@ class Numerai(object):
 
         Xvalid = Xvalid[Xvalid['data_type'] == 'validation']
 
-        Ytrain = Xtrain['target_{}'.format(self.type)]
+        Ytrain = deepcopy(Xtrain['target_{}'.format(self.type)])
         Yvalid = Xvalid['target_{}'.format(self.type)]
 
-        Xtrain.drop(['id', 'era', 'data_type', 'target_bernie', 'target_charles', 'target_elizabeth', 'target_jordan', 'target_ken'], inplace = True, axis = 1)
-        Xvalid.drop(['id', 'era', 'data_type', 'target_bernie', 'target_charles', 'target_elizabeth', 'target_jordan', 'target_ken'], inplace = True, axis = 1)
-        real_data.drop(['id', 'era', 'data_type', 'target_bernie', 'target_charles', 'target_elizabeth', 'target_jordan', 'target_ken'], inplace = True, axis = 1)
+        Xtrain.drop(['id', 'era', 'data_type', 'target_bernie', 'target_charles', 'target_elizabeth', 'target_jordan', 'target_ken'], inplace=True, axis=1)
+        Xvalid.drop(['id', 'era', 'data_type', 'target_bernie', 'target_charles', 'target_elizabeth', 'target_jordan', 'target_ken'], inplace=True, axis=1)
+        real_data.drop(['id', 'era', 'data_type', 'target_bernie', 'target_charles', 'target_elizabeth', 'target_jordan', 'target_ken'], inplace=True, axis=1)
+
+        # If using knn be carefull not have any of the training points in the test dataset
+        if knn:
+            ids = pd.read_csv("../../../Datasets/Numerai/w{0}/train_ids_{1}.csv".format(self.week, self.type))
+
+            # Saving 
+            knnXtrainingPoints = Xtrain.iloc[ids['x'].values]
+            knnYtrainingPoints = Ytrain.iloc[ids['x'].values]
+
+            # Droping
+            Xtrain.drop(ids['x'].values, inplace=True, axis=0)
+            Ytrain.drop(ids['x'].values, inplace=True, axis=0)
+
+            # Adapting proportion
+            prop1 = 0.6*(ids.shape[0]+Xtrain.shape[0])/Xtrain.shape[0]
+            prop2 = 0.5*(ids.shape[0]+Xtrain.shape[0])/Xtrain.shape[0]
+            prop3 = 0.72*(ids.shape[0]+Xtrain.shape[0])/Xtrain.shape[0]
+            prop4 = 0.67*(ids.shape[0]+Xtrain.shape[0])/Xtrain.shape[0]
+
+            del ids
+
+        else:
+            prop1 = 0.6
+            prop2 = 0.5
+            prop3 = 0.72
+            prop4 = 0.67
+
 
         if stageNumber == 1:
             if self.evaluate:
                 # Xtrain1 = 40%, Xtrain2 = 40%, Xtest = 20%
-                Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=0.6)
+                Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=prop1)
                 Xtrain2, Xtest, Ytrain2, Ytest = train_test_split(Xtrain2, Ytrain2, test_size=0.33)
+
+                # Adding KNN training data from R (to avoid overfitting by having them all in 1 and not in test)
+                if knn:
+                    Xtrain1 = pd.concat([Xtrain1,
+                                         knnXtrainingPoints], axis=0)
+                    Ytrain1 = pd.concat([Ytrain1,
+                                         knnYtrainingPoints], axis=0)
+
                 print('done')
                 print('\nXtrain1: {}'.format(Xtrain1.shape),
                       '\nYtrain1: {}'.format(Ytrain1.shape),
@@ -158,7 +192,15 @@ class Numerai(object):
 
             else:
                 # Xtrain1 = 50%, Xtrain2 = 50%
-                Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=0.5)
+                Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=prop2)
+
+                # Adding KNN training data from R (to avoid overfitting by having them all in 1 and not in test)
+                if knn:
+                    Xtrain1 = pd.concat([Xtrain1,
+                                         knnXtrainingPoints], axis=0)
+                    Ytrain1 = pd.concat([Ytrain1,
+                                         knnYtrainingPoints], axis=0)
+
                 print('done')
                 print('\nXtrain1: {}'.format(Xtrain1.shape),
                       '\nYtrain1: {}'.format(Ytrain1.shape),
@@ -177,10 +219,18 @@ class Numerai(object):
 
         elif stageNumber == 2:
             if self.evaluate:
-                # Xtrain1 = 30%, Xtrain2 = 30%, Xtrain3 = 30%, Xtest = 10%
-                Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=0.7)
-                Xtrain2, Xtrain3, Ytrain2, Ytrain3 = train_test_split(Xtrain2, Ytrain2, test_size=0.57)
-                Xtrain3, Xtest, Ytrain3, Ytest = train_test_split(Xtrain3, Ytrain3, test_size=0.25)
+                # Xtrain1 = 28%, Xtrain2 = 28%, Xtrain3 = 28%, Xtest = 16%
+                Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=prop3)
+                Xtrain2, Xtrain3, Ytrain2, Ytrain3 = train_test_split(Xtrain2, Ytrain2, test_size=0.61)
+                Xtrain3, Xtest, Ytrain3, Ytest = train_test_split(Xtrain3, Ytrain3, test_size=0.365)
+
+                # Adding KNN training data from R (to avoid overfitting by having them all in 1 and not in test)
+                if knn:
+                    Xtrain1 = pd.concat([Xtrain1,
+                                         knnXtrainingPoints], axis=0)
+                    Ytrain1 = pd.concat([Ytrain1,
+                                         knnYtrainingPoints], axis=0)
+
                 print('done')
                 print('\nXtrain1: {}'.format(Xtrain1.shape),
                       '\nYtrain1: {}'.format(Ytrain1.shape),
@@ -208,8 +258,16 @@ class Numerai(object):
                                'valid': Yvalid}
             else:
                 # Xtrain1 = 33%, Xtrain2 = 33%, Xtrain3 = 33%
-                Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=0.67)
+                Xtrain1, Xtrain2, Ytrain1, Ytrain2 = train_test_split(Xtrain, Ytrain, test_size=prop4)
                 Xtrain2, Xtrain3, Ytrain2, Ytrain3 = train_test_split(Xtrain2, Ytrain2, test_size=0.5)
+
+                # Adding KNN training data from R (to avoid overfitting by having them all in 1 and not in test)
+                if knn:
+                    Xtrain1 = pd.concat([Xtrain1,
+                                         knnXtrainingPoints], axis=0)
+                    Ytrain1 = pd.concat([Ytrain1,
+                                         knnYtrainingPoints], axis=0)
+
                 print('done')
                 print('\nXtrain1: {}'.format(Xtrain1.shape),
                       '\nYtrain1: {}'.format(Ytrain1.shape),
@@ -261,11 +319,32 @@ class Numerai(object):
 
 
 
-    def knnDistances(self, stage, interaction):
+    def knnDistances(self, name, stage, interaction):
         """
         Load data computed with R script and assign it to the good dataset
         """
-        pass
+
+        print('\n---------------------------------------------')
+        print('>> Processing KNN ------\n')
+
+        self.knnStage = stage
+        self.knnInteraction = interaction
+
+        tournament = pd.read_csv("/home/hugoperrin/Bureau/Datasets/Numerai/w{}/knnFeatures_tournament_{}.csv".format(self.week, name))
+        train = pd.read_csv("/home/hugoperrin/Bureau/Datasets/Numerai/w{}/knnFeatures_train_{}.csv".format(self.week, name))
+
+        self.knnDistances = {}
+
+        print('Generating knn features', end='...')
+
+        for dataset in self.Xtrain:
+            if dataset in ['real_data', 'valid']:
+                self.knnDistances[dataset] = pd.DataFrame(index=self.Xtrain[dataset].index)
+                self.knnDistances[dataset] = pd.merge(self.knnDistances[dataset], tournament, left_index=True, right_index=True)
+            else:
+                self.knnDistances[dataset] = pd.DataFrame(index=self.Xtrain[dataset].index)
+                self.knnDistances[dataset] = pd.merge(self.knnDistances[dataset], train, left_index=True, right_index=True)
+        print('done')
 
 
 
@@ -556,7 +635,7 @@ class Numerai(object):
                         XtrainNNData[dataset] = pd.concat([XtrainNNData[dataset].reset_index(drop=True),
                                                            self.PCA[dataset].reset_index(drop=True)], axis=1)
 
-            # Autoencoding --------------
+            # Autoencoding -------------
 
                 if 1 in self.autoencoderStage:
                     if self.autoencoderInteraction:
@@ -566,6 +645,17 @@ class Numerai(object):
                     else:
                         XtrainNNData[dataset] = pd.concat([XtrainNNData[dataset].reset_index(drop=True),
                                                            self.autoencoderFeature[dataset].reset_index(drop=True)], axis=1)
+
+            # Knn distances ------------
+
+                if 1 in self.knnStage:
+                    if self.knnInteraction:
+                        for feature in self.Xtrain[dataset].columns:
+                            for meta in self.knnDistances[dataset].columns:
+                                XtrainNNData[dataset]['{}_{}'.format(feature, meta)] = self.Xtrain[dataset][feature].values * self.knnDistances[dataset][meta].values
+                    else:
+                        XtrainNNData[dataset] = pd.concat([XtrainNNData[dataset].reset_index(drop=True),
+                                                           self.knnDistances[dataset].reset_index(drop=True)], axis=1)
 
             # To array 
                 XtrainNNData[dataset] = np.array(XtrainNNData[dataset])
@@ -794,6 +884,20 @@ class Numerai(object):
                     else:
                         pass
 
+                # Knn distances
+                    if 1 in self.knnStage:
+                        if self.knnInteraction:
+                            for dataset in self.Xtrain:
+                                for feature in columns:
+                                    for meta in self.knnDistances[dataset].columns:
+                                        inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature].values * self.knnDistances[dataset][meta].values
+                        else:
+                            for dataset in self.Xtrain:
+                                inter[dataset] = pd.concat([inter[dataset].reset_index(drop=True), 
+                                                            self.knnDistances[dataset].reset_index(drop=True)], axis=1)
+                    else:
+                        pass
+
                 # Keeping only processed features
                     if False:
                         for dataset in self.Xtrain:
@@ -852,7 +956,7 @@ class Numerai(object):
                         columns = inter[2].columns
 
                     # Kmeans trick
-                        if 1 in self.kmeanStage:
+                        if 2 in self.kmeanStage:
                             if self.kmeansInteraction:
                                 for dataset in self.Xtrain:
                                     for feature in columns:
@@ -866,7 +970,7 @@ class Numerai(object):
                             pass
 
                     # Kernel PCA
-                        if 1 in self.pcaStage:
+                        if 2 in self.pcaStage:
                             if self.pcaInteraction:
                                 for dataset in self.Xtrain:
                                     for feature in columns:
@@ -880,7 +984,7 @@ class Numerai(object):
                             pass
 
                     # Autoencoder
-                        if 1 in self.autoencoderStage:
+                        if 2 in self.autoencoderStage:
                             if self.autoencoderInteraction:
                                 for dataset in self.Xtrain:
                                     for feature in columns:
@@ -890,6 +994,20 @@ class Numerai(object):
                                 for dataset in self.Xtrain:
                                     inter[dataset] = pd.concat([inter[dataset].reset_index(drop=True), 
                                                                 self.autoencoderFeature[dataset].reset_index(drop=True)], axis=1)
+                        else:
+                            pass
+
+                    # Knn distances
+                        if 2 in self.knnStage:
+                            if self.knnInteraction:
+                                for dataset in self.Xtrain:
+                                    for feature in columns:
+                                        for meta in self.knnDistances[dataset].columns:
+                                            inter[dataset]['{}_{}'.format(feature, meta)] = inter[dataset][feature].values * self.knnDistances[dataset][meta].values
+                            else:
+                                for dataset in self.Xtrain:
+                                    inter[dataset] = pd.concat([inter[dataset].reset_index(drop=True), 
+                                                                self.knnDistances[dataset].reset_index(drop=True)], axis=1)
                         else:
                             pass
 
@@ -992,6 +1110,25 @@ class Numerai(object):
         except:
             pass
 
+    # Knn distances
+        if self.datasetToUse in self.knnStage:
+            if self.knnInteraction:
+                for dataset in self.compilation_data:
+                    for feature in columns:
+                        for meta in self.knnDistances[dataset].columns:
+                            self.compilation_data[dataset]['{}_{}'.format(feature, meta)] = self.compilation_data[dataset][feature].values * self.knnDistances[dataset][meta].values
+            else:
+                for dataset in self.compilation_data:
+                    self.compilation_data[dataset] = pd.concat([self.compilation_data[dataset].reset_index(drop=True), 
+                                                                self.knnDistances[dataset].reset_index(drop=True)], axis=1)
+        else:
+            pass
+
+    # Memory efficiency
+        try:
+            del self.knnDistances
+        except:
+            pass
 
 
 #----------------------------------------------------------------------------------------------

@@ -19,7 +19,7 @@ from sklearn.linear_model import SGDClassifier
 
 
 
-models = {'ExtraTrees1':[1, 3, 15, ExtraTreesClassifier(n_jobs = 1, 
+models = {'ExtraTrees1':[1, 5, 15, ExtraTreesClassifier(n_jobs = 1, 
                                                         criterion = 'entropy',
                                                         max_depth = 3,
                                                         bootstrap = True),
@@ -29,7 +29,7 @@ models = {'ExtraTrees1':[1, 3, 15, ExtraTreesClassifier(n_jobs = 1,
                                      'min_samples_leaf': [250, 1000]}],
 
 
-         'ExtraTrees2': [1, 3, 10, ExtraTreesClassifier(n_jobs = 1, 
+         'ExtraTrees2': [1, 5, 15, ExtraTreesClassifier(n_jobs = 1, 
                                                         criterion = 'gini',
                                                         max_depth = 3,
                                                         bootstrap = True),
@@ -58,7 +58,7 @@ models = {'ExtraTrees1':[1, 3, 15, ExtraTreesClassifier(n_jobs = 1,
                                      'l1_ratio': [0.001, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 1]}],
 
 
-         'LightGBM1':   [1, 5, 15, LGBMClassifier(objective = 'binary',
+         'LightGBM1':   [0, 5, 20, LGBMClassifier(objective = 'binary',
                                                   max_depth = 3,
                                                   verbose=-1,
                                                   n_jobs = 1), 

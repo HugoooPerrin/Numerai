@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     names = ['bernie', 'jordan', 'elizabeth', 'ken', 'charles']
 
-    for name in ['elizabeth']: #names:
+    for name in ['bernie']: 
 
         print('\n----------------------------  {}  ----------------------------'.format(name.upper()))
 
@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
         stacking = Numerai(week=112, name=name)
 
-        stacking.load_data(stageNumber=1, evaluate=True)
+        stacking.load_data(stageNumber=2, evaluate=True, knn=True)
 
 
     #=========================================================================================================
@@ -49,10 +49,10 @@ if __name__ == '__main__':
 
     ## Distance based features
         stacking.kmeansTrick(k=10, stage=[1], interaction=False)
-        stacking.knnDistances(stage=[1], interaction=False)
+        stacking.knnDistances(name=name, stage=[1], interaction=False) # 6 features precomputed (2hours)
 
     ## Dimensionality reduction based features
-        stacking.PCA(n_components=5, stage=[1], interaction=False)
+        stacking.PCA(n_components=5, stage=[2], interaction=False)
         stacking.autoEncoder(stage=[1], interaction=False,
                              layers=[25, 10, 25], dropout=0.6, learningRate=0.00002, batch=64, epoch=4,
                              cvNumber=3, displayStep=500, useGPU=True, evaluate=False)
@@ -67,8 +67,8 @@ if __name__ == '__main__':
 
 
     ## DEEP LEARNING
-        stacking.trainingNN(layers=[75,20], dropout=0.6, learningRate=0.000005, batch=64, epoch=4,
-                            cvNumber=3, displayStep=500, useGPU=useGPU, evaluate=False)
+        # stacking.trainingNN(layers=[76,20], dropout=0.6, learningRate=0.000005, batch=64, epoch=4,
+        #                     cvNumber=3, displayStep=500, useGPU=useGPU, evaluate=False)
 
 
     ## MACHINE LEARNING
@@ -93,6 +93,6 @@ if __name__ == '__main__':
     #================================ 5. PREDICTION
 
 
-        stacking.submit(submissionNumber=1, week=112)
+        stacking.submit(submissionNumber=3, week=112)
 
 
