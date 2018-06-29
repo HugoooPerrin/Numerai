@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     names = ['bernie', 'jordan', 'elizabeth', 'ken', 'charles']
 
-    for name in ['bernie']: 
+    for name in ['elizabeth']: 
 
         print('\n----------------------------  {}  ----------------------------'.format(name.upper()))
 
@@ -38,9 +38,9 @@ if __name__ == '__main__':
     #================================ 1. CLASS
 
 
-        stacking = Numerai(week=112, name=name)
+        stacking = Numerai(week=113, name=name)
 
-        stacking.load_data(stageNumber=1, evaluate=True, knn=True)
+        stacking.load_data(stageNumber=1, evaluate=False, knn=False)
 
 
     #=========================================================================================================
@@ -48,14 +48,14 @@ if __name__ == '__main__':
 
 
     ## Distance based features
-        # stacking.kmeansTrick(k=10, stage=[1], interaction=False)
-        stacking.knnDistances(name=name, stage=[2], interaction=False) # X features precomputed
+        # stacking.kmeansTrick(k=5, stage=[1], interaction=False)
+        # stacking.knnDistances(name=name, stage=[1], interaction=False) # X features precomputed
 
     ## Dimensionality reduction based features
-        stacking.PCA(n_components=5, stage=[1], interaction=False)
-        stacking.autoEncoder(stage=[1], interaction=False,
-                             layers=[25, 10, 25], dropout=0.6, learningRate=0.00002, batch=64, epoch=4,
-                             cvNumber=3, displayStep=500, useGPU=True, evaluate=False)
+        stacking.PCA(n_components=5, stage=[2], interaction=False)
+        # stacking.autoEncoder(stage=[1], interaction=False,
+        #                      layers=[25, 5, 25], dropout=0.6, learningRate=0.00002, batch=64, epoch=4,
+        #                      cvNumber=3, displayStep=500, useGPU=True, evaluate=False)
 
 
     #=========================================================================================================
@@ -67,8 +67,8 @@ if __name__ == '__main__':
 
 
     ## DEEP LEARNING
-        # stacking.trainingNN(layers=[65,20], dropout=0.6, learningRate=0.000005, batch=64, epoch=4,
-        #                     cvNumber=3, displayStep=500, useGPU=useGPU, evaluate=False)
+        # stacking.trainingNN(layers=[55,20], dropout=0.7, learningRate=0.000002, batch=64, epoch=4,
+        #                     cvNumber=3, displayStep=500, useGPU=useGPU, evaluate=True)
 
 
     ## MACHINE LEARNING
@@ -93,6 +93,6 @@ if __name__ == '__main__':
     #================================ 5. PREDICTION
 
 
-        stacking.submit(submissionNumber=3, week=112)
+        stacking.submit(submissionNumber=1, week=113)
 
 

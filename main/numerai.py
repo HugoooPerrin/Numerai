@@ -10,6 +10,8 @@ Main class designed to quickly evaluate different model architectures over Numer
 
 
 Next steps:
+    - Try boosting methods (step i+1 only train on worse prediction of step i)
+    - Stage2 feature engineering in compilation to add more flexibility !
     - Add knn prediction from R or redundant ?
     - Add a stageNumber = 0 option
     - NMF (Non-negative matrix factorization) instead of PCA: assumed to be better for tree-based models
@@ -559,7 +561,7 @@ class Numerai(object):
                               valid_loader=None, use_GPU=useGPU)
 
         # Predicting
-            print('\nGenerating encodied features', end='...')
+            print('\nGenerating encoded features', end='...')
             self.autoencoderFeature = {}
             for dataset in self.Xtrain:
                 self.autoencoderFeature[dataset] = get_encoded(net, loader[dataset], use_GPU=useGPU)
