@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     names = ['bernie', 'jordan', 'elizabeth', 'ken', 'charles']
 
-    for name in ['elizabeth']: 
+    for name in ['bernie', 'jordan']: 
 
         print('\n----------------------------  {}  ----------------------------'.format(name.upper()))
 
@@ -38,9 +38,9 @@ if __name__ == '__main__':
     #================================ 1. CLASS
 
 
-        stacking = Numerai(week=113, name=name)
+        stacking = Numerai(week=114, name=name)
 
-        stacking.load_data(stageNumber=1, evaluate=False, knn=False)
+        stacking.load_data(stageNumber=1, evaluate=True, knn=False)
 
 
     #=========================================================================================================
@@ -48,27 +48,28 @@ if __name__ == '__main__':
 
 
     ## Distance based features
-        # stacking.kmeansTrick(k=5, stage=[1], interaction=False)
-        # stacking.knnDistances(name=name, stage=[1], interaction=False) # X features precomputed
+        stacking.kmeansTrick(k=5, stage=[1, 2], interaction=False)
+        # stacking.knnDistances(features=['knn25', 'knn50', 'knn125', 'knn150'], 
+        #                       stage=[1], interaction=False) # precomputed features
 
     ## Dimensionality reduction based features
-        stacking.PCA(n_components=5, stage=[2], interaction=False)
-        # stacking.autoEncoder(stage=[1], interaction=False,
-        #                      layers=[25, 5, 25], dropout=0.6, learningRate=0.00002, batch=64, epoch=4,
-        #                      cvNumber=3, displayStep=500, useGPU=True, evaluate=False)
+        stacking.PCA(n_components=5, stage=[1, 2], interaction=False)
+        stacking.autoEncoder(stage=[1, 2], interaction=False,
+                             layers=[25, 7, 25], dropout=0.6, learningRate=0.00002, batch=64, epoch=4,
+                             cvNumber=3, displayStep=500, useGPU=True, evaluate=False)
 
 
     #=========================================================================================================
     #================================ 3. TRAINING MODEL
 
     ## Hardware
-        nCores = 8
+        nCores = 6
         useGPU = True
 
 
     ## DEEP LEARNING
-        # stacking.trainingNN(layers=[55,20], dropout=0.7, learningRate=0.000002, batch=64, epoch=4,
-        #                     cvNumber=3, displayStep=500, useGPU=useGPU, evaluate=True)
+        stacking.trainingNN(layers=[67,30], dropout=0.6, learningRate=0.000004, batch=64, epoch=5,
+                            cvNumber=3, displayStep=500, useGPU=useGPU, evaluate=False)
 
 
     ## MACHINE LEARNING
@@ -93,6 +94,6 @@ if __name__ == '__main__':
     #================================ 5. PREDICTION
 
 
-        stacking.submit(submissionNumber=1, week=113)
+        stacking.submit(submissionNumber=1, week=114)
 
 

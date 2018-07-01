@@ -10,17 +10,12 @@ Main class designed to quickly evaluate different model architectures over Numer
 
 
 Next steps:
-    - Try boosting methods (step i+1 only train on worse prediction of step i)
-    - Stage2 feature engineering in compilation to add more flexibility !
-    - Add knn prediction from R or redundant ?
-    - Add a stageNumber = 0 option
     - NMF (Non-negative matrix factorization) instead of PCA: assumed to be better for tree-based models
     - Feature interaction: compute all interaction and then select more important by fitting a randomForest !
     - Add noise for autoencoder input (prevent from overfitting)
     - Memory optimization (inter & feature only when computing)
     - Add more randomness (random feature engineering ?)
     - Using era (cv only by era, add era info on all rows)
-    - hardcore EDA
 
 
 
@@ -321,7 +316,7 @@ class Numerai(object):
 
 
 
-    def knnDistances(self, name, stage, interaction):
+    def knnDistances(self, features, stage, interaction):
         """
         Load data computed with R script and assign it to the good dataset
         """
@@ -332,11 +327,13 @@ class Numerai(object):
         self.knnStage = stage
         self.knnInteraction = interaction
 
-        tournament = pd.read_csv("/home/hugoperrin/Bureau/Datasets/Numerai/w{}/knnFeatures_tournament_{}.csv".format(self.week, name))
-        train = pd.read_csv("/home/hugoperrin/Bureau/Datasets/Numerai/w{}/knnFeatures_train_{}.csv".format(self.week, name))
+        tournament = pd.read_csv("/home/hugoperrin/Bureau/Datasets/Numerai/w{}/knnFeatures_tournament_{}.csv".format(self.week, self.type))
+        train = pd.read_csv("/home/hugoperrin/Bureau/Datasets/Numerai/w{}/knnFeatures_train_{}.csv".format(self.week, self.type))
         
-        #tournament.drop(['knn5', 'knn10', 'knn30', 'knn35'], inplace=True, axis=1)
-        #train.drop(['knn5', 'knn10', 'knn30', 'knn35'], inplace=True, axis=1)
+        to_drop = [col for col in tournament.columns if col not in features]
+
+        tournament.drop(to_drop, inplace=True, axis=1)
+        train.drop(to_drop, inplace=True, axis=1)
 
         self.knnDistances = {}
 

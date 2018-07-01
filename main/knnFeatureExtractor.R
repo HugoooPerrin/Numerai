@@ -24,10 +24,10 @@ library(fastknn)
 #-------------------- 1. DATA ----------------------------
 
 
-week=112
-names=c('bernie') #, 'jordan', 'elizabeth', 'ken', 'charles')
+week=113
+names=c('bernie', 'ken', 'charles') #, 'jordan', 'elizabeth', 'ken', 'charles')
 k=100
-nCores=8*4
+nCores=8
 
 bigtime = Sys.time()
 
