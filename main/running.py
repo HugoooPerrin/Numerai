@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     names = ['bernie', 'jordan', 'elizabeth', 'ken', 'charles']
 
-    for name in ['bernie', 'jordan']: 
+    for name in ['ken', 'charles']:
 
         print('\n----------------------------  {}  ----------------------------'.format(name.upper()))
 
@@ -38,9 +38,9 @@ if __name__ == '__main__':
     #================================ 1. CLASS
 
 
-        stacking = Numerai(week=114, name=name)
+        stacking = Numerai(week=118, name=name)
 
-        stacking.load_data(stageNumber=1, evaluate=True, knn=False)
+        stacking.load_data(stageNumber=1, evaluate=False, knn=False)
 
 
     #=========================================================================================================
@@ -48,14 +48,14 @@ if __name__ == '__main__':
 
 
     ## Distance based features
-        stacking.kmeansTrick(k=5, stage=[1, 2], interaction=False)
+        stacking.kmeansTrick(k=10, stage=[2], interaction=False)
         # stacking.knnDistances(features=['knn25', 'knn50', 'knn125', 'knn150'], 
         #                       stage=[1], interaction=False) # precomputed features
 
     ## Dimensionality reduction based features
         stacking.PCA(n_components=5, stage=[1, 2], interaction=False)
-        stacking.autoEncoder(stage=[1, 2], interaction=False,
-                             layers=[25, 7, 25], dropout=0.6, learningRate=0.00002, batch=64, epoch=4,
+        stacking.autoEncoder(stage=[1], interaction=False,
+                             layers=[25, 10, 25], dropout=0.6, learningRate=0.00002, batch=64, epoch=4,
                              cvNumber=3, displayStep=500, useGPU=True, evaluate=False)
 
 
@@ -63,12 +63,12 @@ if __name__ == '__main__':
     #================================ 3. TRAINING MODEL
 
     ## Hardware
-        nCores = 6
+        nCores = 8
         useGPU = True
 
 
     ## DEEP LEARNING
-        stacking.trainingNN(layers=[67,30], dropout=0.6, learningRate=0.000004, batch=64, epoch=5,
+        stacking.trainingNN(layers=[65,30], dropout=0.6, learningRate=0.000004, batch=64, epoch=5,
                             cvNumber=3, displayStep=500, useGPU=useGPU, evaluate=False)
 
 
@@ -94,6 +94,6 @@ if __name__ == '__main__':
     #================================ 5. PREDICTION
 
 
-        stacking.submit(submissionNumber=1, week=114)
+        stacking.submit(submissionNumber=1)
 
 

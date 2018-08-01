@@ -10,6 +10,7 @@ Main class designed to quickly evaluate different model architectures over Numer
 
 
 Next steps:
+    - Spectral clustering
     - NMF (Non-negative matrix factorization) instead of PCA: assumed to be better for tree-based models
     - Feature interaction: compute all interaction and then select more important by fitting a randomForest !
     - Add noise for autoencoder input (prevent from overfitting)
@@ -1327,7 +1328,7 @@ class Numerai(object):
 
 
 
-    def submit(self, submissionNumber, week):
+    def submit(self, submissionNumber):
 
         if not self.evaluate:
 
@@ -1336,7 +1337,7 @@ class Numerai(object):
             submit['probability_{}'.format(self.type)] = self.finalPrediction['real_data']
 
         # Saving prediction
-            submit.to_csv('../../../Datasets/Numerai/w{0}/submission{1}_{2}.csv'.format(week, submissionNumber, self.type), index = False)
+            submit.to_csv('../../../Datasets/Numerai/w{0}/submission{1}_{2}.csv'.format(self.week, submissionNumber, self.type), index = False)
 
         # Automated submission through the numerai API
             pass
